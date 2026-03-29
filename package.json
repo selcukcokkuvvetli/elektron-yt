@@ -1,27 +1,35 @@
 {
   "name": "elektron-yt",
-  "version": "1.0.0",
-  "description": "Portable Electron YouTube bulk downloader MVP",
+  "version": "1.1.0",
+  "description": "Portable and installer-ready Electron YouTube bulk downloader with MP3 support",
   "main": "app/main/main.js",
   "author": "Codex",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/selcukcokkuvvetli/elektron-yt.git"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
     "bootstrap:binaries": "node scripts/bootstrap-binaries.js",
+    "build:assets": "node scripts/generate-icon.js",
     "test:stores": "node scripts/test-stores.js",
     "test:logic": "node scripts/test-logic.js",
     "test:smoke": "node scripts/smoke-electron.js",
-    "build:portable": "electron-builder --win portable",
-    "build:installer": "electron-builder --win nsis",
-    "build:release": "electron-builder --win portable nsis"
+    "build:portable": "npm run build:assets && electron-builder --win portable",
+    "build:installer": "npm run build:assets && electron-builder --win nsis",
+    "build:release": "npm run build:assets && electron-builder --win portable nsis",
+    "release:prod": "node scripts/release.js"
   },
   "dependencies": {
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "23.3.13",
-    "electron-builder": "23.6.0"
+    "electron-builder": "23.6.0",
+    "png-to-ico": "^2.1.8",
+    "pngjs": "^6.0.0"
   },
   "build": {
     "appId": "com.elektron.yt",
@@ -44,6 +52,7 @@
       }
     ],
     "asar": true,
+    "compression": "maximum",
     "publish": {
       "provider": "github",
       "owner": "selcukcokkuvvetli",
@@ -67,10 +76,10 @@
       "executableName": "ElektronYT"
     },
     "portable": {
-      "artifactName": "${productName} Portable ${version}.${ext}"
+      "artifactName": "Elektron-YT-Portable-${version}.${ext}"
     },
     "nsis": {
-      "artifactName": "${productName} Setup ${version}.${ext}",
+      "artifactName": "Elektron-YT-Setup-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,

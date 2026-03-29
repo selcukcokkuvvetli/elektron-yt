@@ -9,3 +9,4 @@ app/bin/ffmpeg-temp/
 app/bin/*.exe
 downloads/*
 !downloads/.gitkeep
+build/.icon-temp/
