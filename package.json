@@ -1,0 +1,54 @@
+{
+  "name": "elektron-yt",
+  "version": "1.0.0",
+  "description": "Portable Electron YouTube bulk downloader MVP",
+  "main": "app/main/main.js",
+  "author": "Codex",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "bootstrap:binaries": "node scripts/bootstrap-binaries.js",
+    "test:stores": "node scripts/test-stores.js",
+    "test:logic": "node scripts/test-logic.js",
+    "test:smoke": "node scripts/smoke-electron.js",
+    "build:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "23.3.13",
+    "electron-builder": "23.6.0"
+  },
+  "build": {
+    "appId": "com.elektron.yt",
+    "productName": "Elektron YT",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "app/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "app/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "ElektronYT"
+    }
+  }
+}

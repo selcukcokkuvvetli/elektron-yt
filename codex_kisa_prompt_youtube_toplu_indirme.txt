@@ -1,0 +1,187 @@
+Codex İçin Kısa Proje Promptu
+=============================
+
+Electron tabanlı, Windows üzerinde portable çalışan, basit arayüzlü bir YouTube toplu indirme masaüstü uygulaması geliştir.
+
+TEMEL AMAÇ
+----------
+Kullanıcı çok sayıda YouTube linkini tek seferde yapıştırabilsin, uygulama bu linkleri kuyruğa alıp sınırlı eşzamanlı indirsin, her linkin anlık durumunu göstersin ve başarısız olanları tekrar denetebilsin.
+
+TEKNOLOJİ TERCİHLERİ
+--------------------
+- Desktop framework: Electron
+- UI: sade ve hafif, tercihen düz HTML/CSS/JS veya çok hafif React
+- Download engine: yt-dlp
+- Media helper: ffmpeg
+- State storage: JSON dosyaları
+- Database: kullanılmayacak
+
+ZORUNLU GEREKSİNİMLER
+---------------------
+1. Uygulama Windows portable build olarak çalışmalı
+2. Başka PC’de Node.js kurulumu gerektirmemeli
+3. yt-dlp.exe ve ffmpeg.exe uygulama paketine dahil edilmeli
+4. Kullanıcı çok satırlı alana 300’e kadar link yapıştırabilmeli
+5. Boş satırlar ve duplicate linkler temizlenmeli
+6. Linkler kuyruğa alınmalı
+7. Aynı anda sınırlı sayıda indirme yapılmalı (default concurrency: 3)
+8. Her link için canlı durum bilgisi gösterilmeli
+9. Failed olanlar Retry Failed ile tekrar denenebilmeli
+10. Completed olanlar tekrar indirilmemeli
+11. Uygulama kapanıp açıldığında state korunmalı
+12. Veriler JSON dosyalarında tutulmalı
+
+UI GEREKSİNİMLERİ
+-----------------
+Tek ekranlı sade bir arayüz oluştur.
+
+Ekranda şunlar olsun:
+- Başlık
+- Çok satırlı link giriş alanı
+- Başlat butonu
+- Durdur butonu
+- Retry Failed butonu
+- Listeyi Temizle butonu
+- İndirilen klasörü aç butonu
+- Genel sayaçlar:
+  - toplam
+  - queued
+  - downloading
+  - completed
+  - failed
+- Job tablosu
+
+Job tablosunda şu kolonlar olsun:
+- No
+- Title
+- URL
+- Status
+- Progress
+- Speed
+- ETA
+- Error
+- Action
+
+Her job için aşağıdaki state’lerden biri kullanılmalı:
+- waiting
+- queued
+- downloading
+- completed
+- failed
+- cancelled
+- skipped
+
+MİMARİ BEKLENTİ
+---------------
+Projeyi modüler kur.
+
+Ana modüller:
+- main process
+- renderer UI
+- download manager
+- yt-dlp runner
+- job store
+- settings store
+- ipc layer
+
+Önerilen mantık:
+- Electron main process indirme süreçlerini yönetsin
+- Renderer sadece UI işi yapsın
+- Job state JSON dosyasında saklansın
+- UI güncellemeleri IPC ile aktarılsın
+- yt-dlp child process olarak çalıştırılsın
+- stdout/stderr parse edilerek progress çıkarılsın
+
+DOSYA YAPISI BEKLENTİSİ
+-----------------------
+Aşağıdaki yapıya yakın modüler bir proje oluştur:
+
+project-root/
+  app/
+    main/
+    renderer/
+    assets/
+    bin/
+  data/
+  downloads/
+  build/
+
+Bin klasöründe şu dosyalar desteklenecek şekilde yapı kur:
+- yt-dlp.exe
+- ffmpeg.exe
+
+STATE DOSYALARI
+---------------
+Aşağıdaki dosya mantığını kur:
+- jobs.json
+- settings.json
+- archive.txt
+- logs/
+
+jobs.json:
+- job listesi
+- durum
+- progress
+- hata
+- output path
+- retries
+- createdAt / updatedAt
+
+settings.json:
+- concurrency
+- download folder
+- temel uygulama ayarları
+
+archive.txt:
+- tamamlanan kayıtlar
+- tekrar indirmeyi engelleme mantığı
+
+İŞ AKIŞI
+--------
+1. Kullanıcı linkleri yapıştırır
+2. Sistem linkleri parse eder
+3. Boş ve duplicate satırlar temizlenir
+4. Job listesi oluşturulur
+5. Job’lar queued durumuna alınır
+6. Download manager concurrency limitine göre işleri başlatır
+7. UI canlı olarak güncellenir
+8. Başarılı olan completed olur
+9. Hatalı olan failed olur
+10. Retry Failed sadece failed olanları yeniden kuyruğa alır
+11. Completed olanlar archive kontrolü ile tekrar indirilmez
+
+TESTLER
+-------
+Aşağıdaki testleri destekleyecek şekilde geliştir:
+- 5 geçerli link testi
+- geçerli + geçersiz karışık link testi
+- 100+ link testi
+- retry failed testi
+- uygulamayı kapatıp açma testi
+- completed linki tekrar ekleme testi
+- başka PC’de portable çalıştırma testi
+
+KABUL KRİTERLERİ
+----------------
+Aşağıdakiler sağlanmalı:
+- Windows’ta açılıyor
+- Portable çalışıyor
+- Başka PC’de ek runtime gerekmiyor
+- Toplu link kabul ediyor
+- 300 link batch mantığını yönetiyor
+- Canlı durum gösteriyor
+- Retry Failed çalışıyor
+- Completed kayıtlar tekrar inmiyor
+- DB kullanılmıyor
+- Arayüz sade ve anlaşılır
+
+ÖNEMLİ NOTLAR
+-------------
+- Öncelik çalışan MVP
+- Gereksiz özellik ekleme
+- Login sistemi ekleme
+- Database ekleme
+- Cloud altyapı ekleme
+- İlk sürümde tek ekranlı sade yapı kur
+- Kod okunabilir ve modüler olsun
+- Son aşamada Windows portable build üret

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Elektron YT</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Portable Bulk Downloader</p>
+          <h1>Elektron YT</h1>
+          <p class="subtitle">
+            YouTube linklerini toplu kuyruga al, canli takip et, hatalilari tek tikla yeniden dene.
+          </p>
+        </div>
+        <div class="hero-meta">
+          <div class="meta-card">
+            <span class="meta-label">Indirme klasoru</span>
+            <strong id="downloadFolder">-</strong>
+          </div>
+          <div class="meta-card binaries">
+            <span class="meta-label">Binary durumu</span>
+            <div class="binary-row">
+              <span id="ytDlpStatus" class="pill neutral">yt-dlp bekleniyor</span>
+              <span id="ffmpegStatus" class="pill neutral">ffmpeg bekleniyor</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="panel composer">
+          <div class="panel-head">
+            <h2>Link Girisi</h2>
+            <button id="pickFolderButton" class="ghost">Klasor Degistir</button>
+          </div>
+          <textarea
+            id="urlInput"
+            placeholder="Her satira bir YouTube linki gelecek sekilde yapistirin"
+          ></textarea>
+          <p class="hint">Bos satirlar ve tekrar eden linkler otomatik temizlenir.</p>
+          <div class="actions">
+            <button id="startButton" class="primary">Baslat</button>
+            <button id="stopButton" class="danger">Durdur</button>
+            <button id="retryButton" class="ghost">Retry Failed</button>
+            <button id="clearButton" class="ghost">Listeyi Temizle</button>
+            <button id="openFolderButton" class="ghost">Indirilen Klasoru Ac</button>
+          </div>
+        </section>
+
+        <section class="stats-grid" id="statsGrid"></section>
+
+        <section class="panel table-panel">
+          <div class="panel-head">
+            <h2>Job Listesi</h2>
+            <span id="summaryText" class="summary">-</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Title</th>
+                  <th>URL</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Speed</th>
+                  <th>ETA</th>
+                  <th>Error</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="jobsBody">
+                <tr>
+                  <td colspan="9" class="empty">Henuz job yok.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel log-panel">
+          <div class="panel-head">
+            <h2>Durum ve Log</h2>
+            <span id="lastMessage">Hazir</span>
+          </div>
+          <pre id="logBox">Uygulama yukleniyor...</pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

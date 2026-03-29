@@ -1,0 +1,482 @@
+YouTube Toplu İndirme Uygulaması – Codex Proje Talimatları
+======================================================
+
+PROJE AMACI
+-----------
+Windows üzerinde portable çalışan, kurulumsuz açılabilen, basit arayüzlü bir masaüstü uygulama geliştirmek.
+Uygulama kullanıcıdan toplu halde YouTube linkleri alacak, bunları sıraya koyacak, anlık indirme durumunu gösterecek ve başarısız olan linkleri tekrar denetebilecek.
+
+Bu proje özellikle şu senaryo için tasarlanacaktır:
+- Kullanıcı 50 / 100 / 300 adet YouTube linki yapıştırır
+- Uygulama linkleri sıraya alır
+- Aynı anda sınırlı sayıda indirme yapar
+- Her linkin durumunu ekranda canlı gösterir
+- Hata alanları tekrar indirilebilir
+- Başarılı olanlar tekrar indirilmez
+- Hedef bilgisayarda Node.js ya da başka bir runtime kurulumu gerekmez
+- Uygulama portable exe olarak dağıtılır
+
+GENEL YAKLAŞIM
+--------------
+Teknoloji seçimi:
+- Masaüstü uygulama çatısı: Electron
+- Arayüz: basit HTML/CSS/JS ya da çok hafif React
+- İndirme motoru: yt-dlp
+- Medya işleme desteği: ffmpeg
+- Durum takibi: JSON dosyası
+- Veritabanı: yok
+- Canlı ilerleme: Electron IPC ile renderer’a durum aktarımı
+
+TEMEL HEDEF
+-----------
+MVP düzeyinde, kullanımı kolay, sade ama iş gören bir toplu indirme uygulaması üretmek.
+
+KAPSAM
+------
+Uygulama aşağıdaki temel özelliklere sahip olacak:
+
+1. Link giriş alanı
+- Kullanıcı çok satırlı textarea içine çok sayıda YouTube linki yapıştırabilecek
+- Her satır ayrı link olarak kabul edilecek
+- Boş satırlar otomatik temizlenecek
+- Aynı link birden fazla girilmişse duplicate kontrolü yapılacak
+
+2. İndirme başlatma
+- “Başlat” butonu ile toplu işlem başlayacak
+- Linkler tek tek job olarak kuyruğa alınacak
+- Aynı anda örneğin 3 indirme çalışacak
+- Kuyruk mantığı olacak
+
+3. Durum takibi
+Her link için aşağıdaki bilgiler tutulacak:
+- Link
+- Video başlığı (alınabiliyorsa)
+- Durum
+- Yüzde ilerleme
+- Hız
+- Tahmini kalan süre
+- Hata mesajı
+- Dosya yolu
+- Son deneme zamanı
+- Deneme sayısı
+
+4. Durum tipleri
+- waiting
+- queued
+- downloading
+- completed
+- failed
+- cancelled
+- skipped
+
+5. Başarısızları yeniden deneme
+- “Retry Failed” butonu olacak
+- Sadece failed durumundaki işler tekrar kuyruğa alınacak
+
+6. Tamamlananları yeniden indirmeme
+- Uygulama başarılı indirmeleri kayıt altında tutacak
+- Aynı link tekrar eklense bile completed kayıt varsa tekrar indirmeyecek
+- Gerekirse kullanıcı isterse “zorla yeniden indir” mantığı sonradan eklenebilir ama MVP’ye dahil değil
+
+7. Uygulama kapansa bile durum korunması
+- Job durumu JSON dosyasında saklanacak
+- Uygulama yeniden açıldığında son batch ve son durum görülebilecek
+
+8. Portable çalışma
+- Uygulama başka Windows bilgisayarda kurulum gerektirmeden açılabilecek
+- Gerekli binary dosyalar pakete dahil edilecek:
+  - yt-dlp.exe
+  - ffmpeg.exe
+
+MVP DIŞI / ŞİMDİLİK YAPILMAYACAKLAR
+----------------------------------
+Aşağıdaki özellikler ilk sürüme dahil edilmeyecek:
+- Kullanıcı girişi / login sistemi
+- Veritabanı
+- Cloud senkronizasyon
+- Proxy yönetimi
+- Hesap bazlı yetkilendirme
+- Playlist detay ekranı
+- Kanal tarama
+- Gelişmiş format profilleri
+- Zamanlayıcı / scheduler
+- Çok gelişmiş ayarlar ekranı
+- Otomatik güncelleme sistemi
+- Çoklu dil desteği
+
+KULLANICI ARAYÜZÜ HEDEFLERİ
+---------------------------
+Arayüz modern ama sade olacak.
+Gösterişli olmaktan çok anlaşılır ve hızlı olmalı.
+
+Ana pencere bölümleri:
+
+A) Üst Alan
+- Uygulama başlığı
+- Kısa açıklama
+- Hedef klasör bilgisi
+- Gerekirse “Klasör Aç” butonu
+
+B) Link Giriş Alanı
+- Çok satırlı textarea
+- Placeholder:
+  “Her satıra bir YouTube linki gelecek şekilde yapıştırın”
+- Altında küçük bilgi:
+  “Boş satırlar ve tekrar eden linkler otomatik temizlenir”
+
+C) Aksiyon Butonları
+- Başlat
+- Durdur
+- Retry Failed
+- Listeyi Temizle
+- İndirilen Klasörü Aç
+
+D) Genel İstatistik Alanı
+- Toplam link
+- Bekleyen
+- İndirilen
+- Hatalı
+- Devam eden
+
+E) Job Tablosu
+Kolonlar:
+- No
+- Başlık
+- Link
+- Durum
+- İlerleme
+- Hız
+- ETA
+- Hata
+- Aksiyon
+
+Aksiyon kolonunda:
+- Retry
+- Open File
+- Open Folder
+
+F) Alt Durum Alanı
+- Genel log metni
+- Son işlem mesajı
+
+TEKNİK MİMARİ
+-------------
+Uygulama temel olarak 3 ana katmandan oluşacak:
+
+1. Electron Main Process
+Sorumluluklar:
+- Uygulama penceresini açmak
+- Worker mantığını başlatmak
+- yt-dlp süreçlerini yönetmek
+- JSON state dosyasını okumak / yazmak
+- Renderer ile IPC haberleşmesini sağlamak
+- Download klasörü ve data klasörünü yönetmek
+
+2. Renderer UI
+Sorumluluklar:
+- Kullanıcıdan link almak
+- Job listesini göstermek
+- Canlı durum güncellemelerini ekrana basmak
+- Retry / Start / Stop gibi aksiyonları tetiklemek
+
+3. Download Manager
+Sorumluluklar:
+- Kuyruk yönetimi
+- Concurrency limiti
+- Job state geçişleri
+- Başarılı / hatalı işlerin işaretlenmesi
+- Retry mantığı
+- yt-dlp process çıktılarının parse edilmesi
+
+ÖNERİLEN KLASÖR YAPISI
+----------------------
+project-root/
+  app/
+    main/
+      main.js
+      ipc.js
+      download-manager.js
+      job-store.js
+      settings-store.js
+      paths.js
+      ytdlp-runner.js
+    renderer/
+      index.html
+      styles.css
+      renderer.js
+      components/
+    assets/
+      icons/
+    bin/
+      yt-dlp.exe
+      ffmpeg.exe
+  data/
+    jobs.json
+    settings.json
+    archive.txt
+    logs/
+  downloads/
+  build/
+  package.json
+
+DOSYA VE STATE YÖNETİMİ
+-----------------------
+Veritabanı yerine dosya tabanlı yapı kullanılacak.
+
+1. jobs.json
+Amaç:
+- Aktif ve geçmiş job kayıtlarını tutmak
+
+Her job için örnek veri mantığı:
+- id
+- url
+- title
+- status
+- progress
+- speed
+- eta
+- errorMessage
+- outputPath
+- retries
+- createdAt
+- updatedAt
+- batchId
+
+2. settings.json
+Amaç:
+- Uygulama ayarları
+- concurrency değeri
+- download klasörü
+- son kullanılan format seçeneği
+- arayüz tercihleri
+
+3. archive.txt
+Amaç:
+- Başarılı indirilen öğeleri kayıt etmek
+- Tekrar aynı link geldiğinde atlayabilmek
+
+4. logs klasörü
+Amaç:
+- Hata ayıklama
+- İndirme logları
+- Uygulama çalışma logları
+
+İNDİRME MANTIĞI
+---------------
+Sistem iş akışı şu şekilde olacak:
+
+1. Kullanıcı linkleri yapıştırır
+2. Uygulama linkleri parse eder
+3. Duplicate ve boş satırlar temizlenir
+4. Her link için job oluşturulur
+5. Job’lar queued durumuna alınır
+6. Download manager aynı anda belirlenen sayıda işi başlatır
+7. yt-dlp process çalıştırılır
+8. stdout / stderr çıktıları parse edilerek ilerleme bilgisi alınır
+9. UI canlı olarak güncellenir
+10. İş biterse completed yapılır
+11. Hata olursa failed yapılır
+12. Retry Failed ile failed işler tekrar kuyruğa alınır
+
+CONCURRENCY STRATEJİSİ
+----------------------
+İlk sürüm için öneri:
+- Varsayılan concurrency = 3
+
+Neden:
+- Sistemi yormaz
+- Ağ kullanımını dengeler
+- 300 linkte stabil çalışır
+- Hata yönetimi daha kolay olur
+
+Sonradan ayar olarak değiştirilebilir ama MVP’de sabit de olabilir.
+
+İLERLEME GÖSTERİMİ
+------------------
+Her job için mümkün olduğunca şu bilgiler gösterilecek:
+- yüzde
+- indirme hızı
+- kalan süre
+- durum etiketi
+
+Not:
+yt-dlp çıktısına göre bazı alanlar her zaman gelmeyebilir.
+Bu yüzden UI tarafında eksik veri için dayanıklı tasarım yapılmalı.
+
+HATA YÖNETİMİ
+-------------
+Olası hata senaryoları:
+- Geçersiz link
+- Video kaldırılmış
+- Bölge engeli
+- Ağ kesintisi
+- Diskte yer kalmaması
+- yt-dlp process hatası
+- ffmpeg eksik / erişilemez olması
+- Dosya yazma izni sorunu
+
+Beklenen davranış:
+- Uygulama komple çökmesin
+- Sadece ilgili job failed olsun
+- Hata mesajı job üzerinde görülsün
+- Kullanıcı retry yapabilsin
+
+PORTABLE DAĞITIM HEDEFİ
+-----------------------
+En kritik hedeflerden biri:
+Uygulama başka Windows bilgisayarda ek kurulum gerektirmeden açılabilmeli.
+
+Bunun için:
+- Electron app portable build alınacak
+- yt-dlp.exe ve ffmpeg.exe paket içine dahil edilecek
+- Uygulama ilk açılışta kendi data klasörünü oluşturacak
+- Node.js ya da npm kurulumu gerekmeyecek
+
+DAĞITIM SONRASI BEKLENEN KULLANIM
+---------------------------------
+Kullanıcı:
+- Zip dosyasını alır
+- Klasöre çıkarır
+- Exe dosyasını çalıştırır
+- Linkleri yapıştırır
+- İndirmeyi başlatır
+
+Kullanıcı tarafında yapılmayacaklar:
+- Node kurulumu
+- npm install
+- ffmpeg kurulumu
+- yt-dlp kurulumu
+- veritabanı kurulumu
+
+CODEx İÇİN UYGULAMA GÖREVLERİ
+-----------------------------
+Aşağıdaki sırayla ilerlenmesi istenir:
+
+FAZ 1 – Proje İskeleti
+- Electron tabanlı proje yapısını oluştur
+- Tek pencere açan temel masaüstü uygulamasını hazırla
+- Main / renderer ayrımını düzgün kur
+- Temel klasör yapısını oluştur
+
+FAZ 2 – UI Temeli
+- Ana ekranı oluştur
+- Link giriş alanını ekle
+- Aksiyon butonlarını ekle
+- Job tablosunu ekle
+- Genel istatistik kutularını ekle
+
+FAZ 3 – Job Modeli ve State Yönetimi
+- Job veri modelini oluştur
+- jobs.json okuma / yazma mekanizmasını kur
+- settings.json yapısını kur
+- uygulama açılışında state yüklemeyi ekle
+
+FAZ 4 – Download Manager
+- Kuyruk sistemini oluştur
+- concurrency mantığını ekle
+- job durum geçişlerini tanımla
+- start / stop / retry akışlarını yönet
+
+FAZ 5 – yt-dlp Entegrasyonu
+- yt-dlp.exe process olarak çalıştır
+- ffmpeg.exe ile entegrasyonu hazırla
+- stdout / stderr üzerinden ilerleme parse et
+- completed / failed ayrımını güvenli yap
+
+FAZ 6 – UI Canlı Güncelleme
+- IPC ile main process -> renderer iletişimi kur
+- Job satırlarını canlı güncelle
+- ilerleme, hız, hata, durum bilgilerini ekrana anlık yansıt
+
+FAZ 7 – Retry ve Arşiv Mantığı
+- failed olanları yeniden kuyruğa al
+- completed olanları archive kaydına ekle
+- aynı link tekrar girildiğinde skip mantığını uygula
+
+FAZ 8 – Portable Build
+- Windows portable build üret
+- gerekli binary dosyaları build içine dahil et
+- başka bilgisayarda test senaryosuna uygun hale getir
+
+TEST SENARYOLARI
+----------------
+Mutlaka aşağıdaki testler yapılmalı:
+
+1. 5 geçerli link ile test
+Beklenen:
+- Hepsi tamamlanmalı
+- UI doğru güncellenmeli
+
+2. Geçerli + geçersiz karışık linkler
+Beklenen:
+- Geçerli olanlar inmeli
+- Geçersizler failed olmalı
+- Uygulama çökmemeli
+
+3. 100+ link testi
+Beklenen:
+- Kuyruk stabil çalışmalı
+- Concurrency limiti korunmalı
+- Bellek kullanımı makul olmalı
+
+4. Retry Failed testi
+Beklenen:
+- Sadece failed öğeler yeniden denenmeli
+
+5. Uygulamayı kapat / aç testi
+Beklenen:
+- jobs.json yüklenmeli
+- geçmiş durumlar geri gelmeli
+
+6. Başarılı job tekrar ekleme testi
+Beklenen:
+- aynı link skip edilmeli ya da tekrar indirme engellenmeli
+
+7. Başka PC’de açma testi
+Beklenen:
+- uygulama Node kurulu olmadan çalışmalı
+- yt-dlp ve ffmpeg erişilebilir olmalı
+
+KABUL KRİTERLERİ
+----------------
+Bu maddeler sağlanırsa MVP başarılı kabul edilecek:
+
+- Uygulama Windows üzerinde açılıyor
+- Portable olarak çalışıyor
+- Başka PC’de ek runtime kurulumu gerektirmiyor
+- Toplu link girişi yapılabiliyor
+- En az 300 linklik batch senaryosunu yönetebiliyor
+- Aynı anda sınırlı sayıda indirme yapıyor
+- Her job için canlı durum gösteriliyor
+- Başarısız olanlar yeniden denenebiliyor
+- Başarılı olanlar tekrar indirilmiyor
+- Veritabanı gerekmiyor
+- Kullanımı sade ve anlaşılır
+
+TASARIM PRENSİPLERİ
+-------------------
+- Basitlik öncelikli
+- Teknik ama sade görünüm
+- Karmaşık ayar ekranlarından kaçınılacak
+- Büyük veri tablosunda okunabilirlik korunacak
+- Hata durumları kullanıcıya net gösterilecek
+- UI mümkün olduğunca tek ekran mantığında olacak
+
+NOTLAR
+------
+- Kod ilk aşamada temiz ve modüler kurulmalı
+- İleride format seçimi, playlist desteği, klasör seçici, tema değişimi gibi özellikler eklenebilir
+- Ama şu an öncelik çalışan MVP
+- Geliştirme sırasında veritabanı eklenmeyecek
+- Gereksiz mimari karmaşıklık oluşturulmayacak
+- Önce çalışan temel sürüm hedeflenecek, sonra iyileştirme yapılacak
+
+KISA YÖNETİCİ ÖZETİ
+-------------------
+Yapılacak uygulama:
+Portable çalışan, Electron tabanlı, basit arayüzlü, YouTube linklerini toplu indirip anlık takip ettiren bir masaüstü uygulamasıdır.
+Veritabanı kullanılmayacaktır.
+Durumlar JSON dosyasında tutulacaktır.
+Başarısız indirmeler yeniden denenebilecektir.
+Başarılı olanlar tekrar indirilmeyecektir.
+Amaç, başka Windows bilgisayarlarda da kurulum derdi olmadan çalışacak sade ve güvenilir bir MVP üretmektir.
