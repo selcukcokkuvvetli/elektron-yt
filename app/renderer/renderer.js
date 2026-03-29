@@ -33,12 +33,15 @@ function buildJobSignature(job) {
     job.id,
     job.format,
     job.title,
+    job.url,
     job.status,
     job.progress,
     job.speed,
     job.eta,
     job.errorMessage,
-    job.outputPath
+    job.outputPath,
+    job.playlistTitle,
+    job.playlistIndex
   ].join('|');
 }
 
@@ -50,7 +53,8 @@ function renderStats() {
     ['Completed', state.stats.completed],
     ['Failed', state.stats.failed],
     ['Video', state.stats.video],
-    ['MP3', state.stats.audio]
+    ['MP3', state.stats.audio],
+    ['Playlist', state.stats.playlists]
   ];
 
   refs.statsGrid.innerHTML = items.map(function map(item) {
@@ -97,6 +101,8 @@ function updateJobRow(row, job, index) {
     + '<td><span class="format-chip">' + escapeHtml(formatLabel(job.format)) + '</span></td>'
     + '<td>' + escapeHtml(job.title || '-') + '</td>'
     + '<td class="mono">' + escapeHtml(job.url) + '</td>'
+    + '<td>' + escapeHtml(job.playlistTitle || '-') + '</td>'
+    + '<td>' + escapeHtml(job.playlistIndex == null ? '-' : job.playlistIndex) + '</td>'
     + '<td><span class="status ' + escapeHtml(job.status) + '">' + escapeHtml(job.status) + '</span></td>'
     + '<td>' + escapeHtml(String(Math.round(job.progress || 0))) + '%</td>'
     + '<td>' + escapeHtml(job.speed || '-') + '</td>'
@@ -107,7 +113,7 @@ function updateJobRow(row, job, index) {
 
 function renderJobs() {
   if (!state.jobs.length) {
-    refs.jobsBody.innerHTML = '<tr><td colspan="10" class="empty">Henuz job yok.</td></tr>';
+    refs.jobsBody.innerHTML = '<tr><td colspan="12" class="empty">Henuz job yok.</td></tr>';
     state.previousJobSignatures.clear();
     return;
   }
@@ -171,9 +177,11 @@ async function startDownloads() {
     return;
   }
 
+  refs.lastMessage.textContent = 'Playlist/video girisleri analiz ediliyor...';
   const result = await window.appApi.startDownloads(text, state.selectedFormat);
   refs.lastMessage.textContent = result.queued + ' link ' + formatLabel(result.format) + ' olarak kuyruga alindi, '
-    + result.skipped + ' link atlandi.';
+    + result.skipped + ' link atlandi, ' + result.failedInputs + ' giris analiz hatasi verdi.'
+    + (result.playlistsResolved ? ' ' + result.playlistsResolved + ' playlistten ' + result.playlistItems + ' item bulundu.' : '');
   refs.urlInput.value = '';
 }
 

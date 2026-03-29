@@ -18,6 +18,15 @@ function makeArchiveKey(url, format) {
   });
 }
 
+function looksLikePlaylistUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.searchParams.has('list') || parsed.pathname.indexOf('/playlist') >= 0;
+  } catch (error) {
+    return /[?&]list=/.test(String(url || ''));
+  }
+}
+
 function parseArchiveLine(line) {
   const trimmed = String(line || '').trim();
   if (!trimmed) {
@@ -46,13 +55,18 @@ function parseArchiveLine(line) {
   };
 }
 
-function createJob(url, status, format) {
+function createJob(url, status, format, extra) {
   const createdAt = nowIso();
-  return {
+  return Object.assign({
     id: 'job_' + Date.now() + '_' + Math.random().toString(16).slice(2, 8),
     url: url,
     title: '',
     format: sanitizeFormat(format),
+    sourceType: 'single',
+    playlistUrl: '',
+    playlistTitle: '',
+    playlistIndex: null,
+    originalInputUrl: url,
     status: status || 'queued',
     progress: 0,
     speed: '-',
@@ -64,12 +78,12 @@ function createJob(url, status, format) {
     updatedAt: createdAt,
     batchId: 'batch_' + Date.now(),
     lastTriedAt: ''
-  };
+  }, extra || {});
 }
 
 function normalizeJob(rawJob) {
   const job = Object.assign(
-    createJob(rawJob.url || '', rawJob.status || 'queued', rawJob.format || 'video'),
+    createJob(rawJob.url || '', rawJob.status || 'queued', rawJob.format || 'video', rawJob),
     rawJob
   );
 
@@ -81,6 +95,11 @@ function normalizeJob(rawJob) {
   job.title = job.title || '';
   job.format = sanitizeFormat(job.format);
   job.retries = Number(job.retries) || 0;
+  job.sourceType = job.sourceType === 'playlist' ? 'playlist' : 'single';
+  job.playlistUrl = job.playlistUrl || '';
+  job.playlistTitle = job.playlistTitle || '';
+  job.playlistIndex = job.playlistIndex == null ? null : Number(job.playlistIndex);
+  job.originalInputUrl = job.originalInputUrl || job.url;
   return job;
 }
 
@@ -95,7 +114,8 @@ function buildStats(jobs) {
     cancelled: 0,
     skipped: 0,
     video: 0,
-    audio: 0
+    audio: 0,
+    playlists: 0
   };
 
   jobs.forEach(function each(job) {
@@ -107,6 +127,10 @@ function buildStats(jobs) {
       stats.audio += 1;
     } else {
       stats.video += 1;
+    }
+
+    if (job.sourceType === 'playlist') {
+      stats.playlists += 1;
     }
   });
 
@@ -120,6 +144,7 @@ class DownloadManager extends EventEmitter {
     this.settingsStore = options.settingsStore;
     this.paths = options.paths;
     this.runner = options.runner || new YtDlpRunner(this.paths, this.log.bind(this));
+    this.resolver = options.resolver || this.runner;
     this.jobs = [];
     this.activeTasks = new Map();
     this.queue = [];
@@ -292,31 +317,93 @@ class DownloadManager extends EventEmitter {
     });
   }
 
-  startDownloads(rawInput, format) {
+  async resolveInput(url) {
+    if (this.resolver && typeof this.resolver.resolveInput === 'function') {
+      return this.resolver.resolveInput(url);
+    }
+
+    return {
+      sourceType: 'single',
+      originalInputUrl: url,
+      items: [
+        {
+          url: url,
+          title: '',
+          sourceType: 'single',
+          playlistUrl: '',
+          playlistTitle: '',
+          playlistIndex: null,
+          originalInputUrl: url
+        }
+      ]
+    };
+  }
+
+  createFailedAnalysisJob(url, format, errorMessage) {
+    return createJob(url, 'failed', format, {
+      sourceType: looksLikePlaylistUrl(url) ? 'playlist' : 'single',
+      originalInputUrl: url,
+      errorMessage: 'Analiz hatasi: ' + errorMessage
+    });
+  }
+
+  createJobFromResolvedItem(item, format) {
+    return createJob(item.url, 'queued', format, {
+      title: item.title || '',
+      sourceType: item.sourceType === 'playlist' ? 'playlist' : 'single',
+      playlistUrl: item.playlistUrl || '',
+      playlistTitle: item.playlistTitle || '',
+      playlistIndex: item.playlistIndex == null ? null : Number(item.playlistIndex),
+      originalInputUrl: item.originalInputUrl || item.url
+    });
+  }
+
+  async startDownloads(rawInput, format) {
     const jobFormat = sanitizeFormat(format);
     const urls = this.sanitizeLinks(rawInput);
     const createdJobs = [];
     const skippedJobs = [];
+    const failedJobs = [];
+    let playlistsResolved = 0;
+    let playlistItems = 0;
 
-    urls.forEach(function each(url) {
-      if (this.archiveSet.has(makeArchiveKey(url, jobFormat))) {
-        const archiveJob = createJob(url, 'skipped', jobFormat);
-        archiveJob.errorMessage = 'Bu link bu formatta daha once indirildi.';
-        skippedJobs.push(archiveJob);
-        return;
+    for (let index = 0; index < urls.length; index += 1) {
+      const inputUrl = urls[index];
+      try {
+        this.log('Input analiz ediliyor: ' + inputUrl);
+        const resolved = await this.resolveInput(inputUrl);
+        if (resolved.sourceType === 'playlist') {
+          playlistsResolved += 1;
+          playlistItems += resolved.items.length;
+          this.log('Playlist bulundu: ' + (resolved.playlistTitle || inputUrl) + ' (' + resolved.items.length + ' item)');
+        }
+
+        resolved.items.forEach(function each(item) {
+          if (this.archiveSet.has(makeArchiveKey(item.url, jobFormat))) {
+            const archiveJob = this.createJobFromResolvedItem(item, jobFormat);
+            archiveJob.status = 'skipped';
+            archiveJob.errorMessage = 'Bu link bu formatta daha once indirildi.';
+            skippedJobs.push(archiveJob);
+            return;
+          }
+
+          if (this.hasActiveOrHistoricalUrl(item.url, jobFormat)) {
+            const duplicateJob = this.createJobFromResolvedItem(item, jobFormat);
+            duplicateJob.status = 'skipped';
+            duplicateJob.errorMessage = 'Bu link bu formatta zaten listede mevcut.';
+            skippedJobs.push(duplicateJob);
+            return;
+          }
+
+          createdJobs.push(this.createJobFromResolvedItem(item, jobFormat));
+        }, this);
+      } catch (error) {
+        failedJobs.push(this.createFailedAnalysisJob(inputUrl, jobFormat, error.message));
+        this.log('Analiz basarisiz: ' + inputUrl + ' - ' + error.message);
       }
+    }
 
-      if (this.hasActiveOrHistoricalUrl(url, jobFormat)) {
-        const duplicateJob = createJob(url, 'skipped', jobFormat);
-        duplicateJob.errorMessage = 'Bu link bu formatta zaten listede mevcut.';
-        skippedJobs.push(duplicateJob);
-        return;
-      }
-
-      createdJobs.push(createJob(url, 'queued', jobFormat));
-    }, this);
-
-    this.jobs = this.jobs.concat(createdJobs, skippedJobs);
+    this.jobs = this.jobs.concat(createdJobs, skippedJobs, failedJobs);
     this.queue = this.queue.concat(createdJobs.map(function map(job) {
       return job.id;
     }));
@@ -326,14 +413,18 @@ class DownloadManager extends EventEmitter {
     this.pumpQueue();
 
     this.log(
-      'Queued ' + createdJobs.length + ' ' + jobFormat + ' downloads, skipped ' + skippedJobs.length + ' items.'
+      'Queued ' + createdJobs.length + ' ' + jobFormat + ' downloads, skipped ' + skippedJobs.length
+      + ' items, analysis failed for ' + failedJobs.length + ' inputs.'
     );
 
     return {
       queued: createdJobs.length,
       skipped: skippedJobs.length,
+      failedInputs: failedJobs.length,
       totalInput: urls.length,
-      format: jobFormat
+      format: jobFormat,
+      playlistsResolved: playlistsResolved,
+      playlistItems: playlistItems
     };
   }
 

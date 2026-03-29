@@ -1,0 +1,358 @@
+Playlist URL Desteği Ekleme Talimatları
+=====================================
+
+AMAÇ
+----
+Mevcut Electron tabanlı YouTube toplu indirme uygulamasına playlist URL desteği eklenmesi.
+
+Bu güncelleme ile kullanıcı:
+- tek video URL
+- birden fazla video URL
+- playlist URL
+
+girebilecek ve sistem playlist içindeki parçaları çözüp bunları ayrı ayrı job olarak kuyruğa ekleyebilecek.
+
+GENEL HEDEF
+-----------
+Mevcut mimari bozulmadan, sadece genişletilerek playlist desteği eklenecek.
+Playlist URL doğrudan tek iş gibi indirilmeyecek.
+Bunun yerine playlist önce analiz edilecek, içindeki video URL’leri çıkarılacak ve her parça ayrı job olarak işlenecek.
+
+Bu yaklaşım sayesinde mevcut sistemdeki:
+- queue
+- progress
+- retry
+- archive
+- mp3/video seçimi
+- portable yapı
+
+aynen korunacak.
+
+TEMEL DAVRANIŞ
+--------------
+1. Kullanıcı playlist URL yapıştırır
+2. Sistem URL’nin playlist olup olmadığını tespit eder
+3. Playlist analiz edilir
+4. Playlist içindeki parçalar çıkarılır
+5. Her parça ayrı job olarak oluşturulur
+6. Mevcut indirme motoru bu job’ları normal sıra mantığıyla indirir
+
+Bu sayede:
+- her video ayrı satırda görünür
+- hata alan parça ayrı retry edilir
+- mp3/video seçimi her parçaya uygulanır
+- archive sistemi parça bazında çalışır
+
+NEDEN BU YAKLAŞIM
+-----------------
+Playlist’i tek komutla tek iş gibi indirtmek yerine önce parçalara ayırmak daha doğrudur.
+
+Çünkü:
+- UI daha anlaşılır olur
+- her item için ayrı progress gösterilebilir
+- retry parça bazında yapılabilir
+- failed olan tek öğe yeniden denenebilir
+- archive sistemi doğru çalışır
+- mevcut job tabanlı mimari bozulmaz
+
+KAPSAM
+------
+Bu fazda aşağıdaki destek eklenecek:
+
+1. Playlist URL algılama
+2. Playlist metadata çözme
+3. Playlist içindeki video URL’leri çıkarma
+4. Her item için ayrı job üretme
+5. MP3 / Video formatını item’lara uygulama
+6. Playlist bilgilerini job üzerinde tutma
+7. UI’da playlist kaynaklı job’ları gösterebilme
+8. Retry ve archive sistemini playlist item bazında sürdürme
+
+UI GÜNCELLEMELERİ
+-----------------
+Mevcut arayüzde büyük değişiklik yapılmadan küçük genişletme yeterlidir.
+
+Beklenen UI davranışı:
+- Kullanıcı textarea içine playlist URL yapıştırabilir
+- Başlat dediğinde önce “Playlist analiz ediliyor...” durumu görülebilir
+- Analiz tamamlanınca örnek bilgi gösterilebilir:
+  - “Playlist bulundu”
+  - “24 parça kuyruğa eklendi”
+
+Opsiyonel ama faydalı alanlar:
+- Job tablosuna Playlist kolonu
+veya
+- Başlık altında küçük playlist etiketi
+
+Örnek tablo alanları:
+- No
+- Title
+- URL
+- Playlist
+- Playlist Index
+- Status
+- Format
+- Progress
+- Speed
+- ETA
+- Error
+- Action
+
+JOB MODEL GÜNCELLEMESİ
+----------------------
+Her job kaydına playlist ile ilgili ek alanlar eklenebilir.
+
+Önerilen yeni alanlar:
+- sourceType
+- playlistUrl
+- playlistTitle
+- playlistIndex
+- originalInputUrl
+
+Alan açıklamaları:
+- sourceType:
+  - single
+  - playlist
+
+- playlistUrl:
+  Job bir playlist içinden geldiyse ana playlist adresi
+
+- playlistTitle:
+  Playlist adı alınabiliyorsa saklanır
+
+- playlistIndex:
+  Parçanın playlist içindeki sırası
+
+- originalInputUrl:
+  Kullanıcının girdiği asıl URL
+  (tek video veya playlist URL olabilir)
+
+Mevcut alanlar korunacak:
+- id
+- url
+- title
+- status
+- progress
+- speed
+- eta
+- errorMessage
+- outputPath
+- retries
+- createdAt
+- updatedAt
+- batchId
+- format
+
+PLAYLIST ÇÖZÜMLEME MANTIĞI
+--------------------------
+Playlist URL geldiğinde sistem doğrudan download başlatmamalı.
+Önce çözümleme adımı çalışmalı.
+
+Beklenen mantık:
+1. URL playlist mi kontrol et
+2. Playlist ise yt-dlp ile metadata çek
+3. Entry listesini al
+4. Her entry için:
+   - title
+   - id
+   - url
+   - index
+   - varsa playlist title
+5. Bunları job’a dönüştür
+6. Job’ları queue’ya ekle
+
+Önemli:
+Playlist içindeki her item için ayrı video URL oluşturulmalı veya güvenilir item URL bilgisi elde edilmelidir.
+
+İNDİRME DAVRANIŞI
+-----------------
+Playlist desteği geldikten sonra indirme mantığı şu şekilde olacak:
+
+1. Tek video URL
+- mevcut davranış korunacak
+
+2. Playlist URL
+- önce parçalar çözümlenecek
+- sonra her parça normal job olarak indirilecek
+
+Bu davranış hem video hem mp3 için çalışmalı.
+
+FORMAT DAVRANIŞI
+----------------
+Kullanıcı playlist URL eklediğinde seçili format neyse tüm item’lara uygulanmalı.
+
+Örnek:
+- Kullanıcı MP3 seçmişse playlist içindeki tüm item’lar audio job olarak oluşur
+- Kullanıcı Video seçmişse tüm item’lar video job olarak oluşur
+
+Yani playlist özel ayrı format mantığı olmayacak.
+Mevcut format seçimi playlist item’lara aynen uygulanacak.
+
+ARCHIVE DAVRANIŞI
+-----------------
+Archive sistemi bozulmamalı.
+
+Kurallar:
+- kontrol item bazında yapılmalı
+- archive key yine:
+  url + format
+
+Bu sayede:
+- playlist içindeki daha önce indirilen video tekrar gelirse skip olabilir
+- ama farklı format istenirse indirilebilir
+
+Önemli:
+Archive playlist bazında değil item bazında çalışmalı.
+
+RETRY DAVRANIŞI
+---------------
+Retry mantığı parça bazında devam etmeli.
+
+Kurallar:
+- playlist içinden gelen failed item tek başına retry edilebilmeli
+- Retry Failed tüm failed item’ları yeniden kuyruğa alabilmeli
+- retry sırasında playlist bilgileri korunmalı
+- format korunmalı
+
+Yani mevcut retry sistemi bozulmayacak, sadece playlist item’lar için de çalışacak.
+
+SKIP DAVRANIŞI
+--------------
+Skip mantığı archive ile uyumlu olmalı.
+
+Örnek:
+- playlist içindeki 10 parçadan 3’ü zaten tamamlanmışsa
+- bu 3 parça skip olabilir
+- kalanlar indirilebilir
+
+Kullanıcı deneyimi açısından bu çok faydalıdır.
+
+PERFORMANS NOTLARI
+------------------
+Playlist desteği gelirken mevcut performans prensipleri korunmalı.
+
+Önemli noktalar:
+- playlist parsing aşaması download queue’dan ayrı ele alınmalı
+- çok büyük playlist’lerde önce parse, sonra kontrollü queue ekleme yapılmalı
+- queue’ya bir anda binlerce satır basılacaksa UI dikkatli güncellenmeli
+- mevcut concurrency mantığı aynen korunmalı
+
+Öneri:
+- playlist parse bittikten sonra toplu ekleme yap
+- UI tarafında tek tek gereksiz render etme
+
+HATA YÖNETİMİ
+-------------
+Olası hata durumları:
+- geçersiz playlist URL
+- private / unavailable playlist
+- playlist çözümlenemedi
+- entry listesi alınamadı
+- bazı item’lar eksik geldi
+- playlist içinde silinmiş / erişilemeyen video var
+
+Beklenen davranış:
+- uygulama komple çökmesin
+- playlist parse hatası kullanıcıya net gösterilsin
+- parse edilebilen item’lar varsa onlar queue’ya alınabilsin
+- erişilemeyen item’lar failed veya skipped benzeri uygun statüye düşebilsin
+
+PORTABLE YAPIYA ETKİSİ
+----------------------
+Playlist desteği portable yapıyı bozmamalı.
+
+Kritik gereksinimler:
+- başka PC’de kurulum istemeyecek
+- yt-dlp.exe paket içinde olacak
+- ffmpeg.exe paket içinde olacak
+- playlist parse ve indirme aynı paket içinde çalışacak
+
+TEST SENARYOLARI
+----------------
+Aşağıdaki testler mutlaka yapılmalı:
+
+1. Tek video URL testi
+Beklenen:
+- mevcut davranış bozulmamalı
+
+2. Küçük playlist testi
+Beklenen:
+- playlist çözülmeli
+- örneğin 10 parça ise 10 ayrı job oluşmalı
+
+3. MP3 playlist testi
+Beklenen:
+- playlist item’ları audio job olarak oluşmalı
+- audio klasörüne yazılmalı
+
+4. Video playlist testi
+Beklenen:
+- playlist item’ları video job olarak oluşmalı
+- video klasörüne yazılmalı
+
+5. Karışık giriş testi
+Beklenen:
+- textarea içinde tek video + playlist + tek video birlikte olabilir
+- sistem hepsini doğru job’lara çevirebilmeli
+
+6. Archive testi
+Beklenen:
+- daha önce inmiş playlist item’ları skip olabilir
+- diğerleri indirilmeli
+
+7. Retry failed playlist item testi
+Beklenen:
+- failed olan tek parça retry edilebilmeli
+
+8. Geçersiz playlist testi
+Beklenen:
+- kullanıcı hata görmeli
+- uygulama çökmemeli
+
+9. Başka PC portable testi
+Beklenen:
+- playlist desteği portable build içinde çalışmalı
+
+KABUL KRİTERLERİ
+----------------
+Aşağıdaki şartlar sağlanırsa playlist güncellemesi başarılı kabul edilecek:
+
+- Playlist URL algılanabiliyor
+- Playlist analiz edilebiliyor
+- Playlist item’ları ayrı job olarak oluşturuluyor
+- MP3 / Video format seçimi playlist item’lara uygulanıyor
+- Archive item bazında doğru çalışıyor
+- Retry item bazında çalışıyor
+- UI playlist kaynaklı job’ları gösterebiliyor
+- Tek video desteği bozulmuyor
+- Portable yapı bozulmuyor
+
+KISA CODEX PROMPT
+-----------------
+Mevcut Electron tabanlı YouTube toplu indirme uygulamasına playlist URL desteği ekle.
+
+Gereksinimler:
+- Kullanıcı tek video URL yanında playlist URL de girebilsin
+- Playlist URL geldiğinde önce playlist analiz edilsin
+- Playlist içindeki item’lar ayrı job olarak oluşturulsun
+- Her item mevcut queue sistemine eklensin
+- MP3 / Video format seçimi playlist item’lara uygulansın
+- Job modeline playlist ile ilgili alanlar ekle:
+  - sourceType
+  - playlistUrl
+  - playlistTitle
+  - playlistIndex
+  - originalInputUrl
+- Archive sistemi item bazında ve url+format mantığında çalışsın
+- Retry mantığı item bazında çalışmaya devam etsin
+- UI’da playlist bilgisi gösterilebilsin
+- Mevcut mimariyi bozma, sadece genişlet
+
+NOT
+---
+Öncelik yine çalışan MVP’dir.
+Gereksiz karmaşıklık eklenmeyecek.
+İlk hedef:
+- playlist URL’yi çözmek
+- parçaları ayrı job’a çevirmek
+- mevcut indirme mimarisine problemsiz entegre etmek

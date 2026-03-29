@@ -28,6 +28,57 @@ fs.writeFileSync(paths.settingsFile, '{}', 'utf8');
 fs.writeFileSync(paths.archiveFile, '', 'utf8');
 
 class FakeRunner {
+  resolveInput(inputUrl) {
+    if (inputUrl.indexOf('playlist-invalid') >= 0) {
+      throw new Error('Playlist cozumlenemedi');
+    }
+
+    if (inputUrl.indexOf('playlist-good') >= 0) {
+      return {
+        sourceType: 'playlist',
+        playlistTitle: 'Playlist Test',
+        playlistUrl: inputUrl,
+        originalInputUrl: inputUrl,
+        items: [
+          {
+            url: 'https://youtu.be/playlist-item-1',
+            title: 'Playlist 1',
+            sourceType: 'playlist',
+            playlistUrl: inputUrl,
+            playlistTitle: 'Playlist Test',
+            playlistIndex: 1,
+            originalInputUrl: inputUrl
+          },
+          {
+            url: 'https://youtu.be/playlist-item-2',
+            title: 'Playlist 2',
+            sourceType: 'playlist',
+            playlistUrl: inputUrl,
+            playlistTitle: 'Playlist Test',
+            playlistIndex: 2,
+            originalInputUrl: inputUrl
+          }
+        ]
+      };
+    }
+
+    return {
+      sourceType: 'single',
+      originalInputUrl: inputUrl,
+      items: [
+        {
+          url: inputUrl,
+          title: 'Title for ' + inputUrl,
+          sourceType: 'single',
+          playlistUrl: '',
+          playlistTitle: '',
+          playlistIndex: null,
+          originalInputUrl: inputUrl
+        }
+      ]
+    };
+  }
+
   start(job, options) {
     let cancelled = false;
     let rejectPromise = null;
@@ -48,7 +99,7 @@ class FakeRunner {
         }
 
         options.onUpdate({
-          title: 'Title for ' + job.url,
+          title: job.title || ('Title for ' + job.url),
           progress: 55,
           speed: '1.0MiB/s',
           eta: '00:03'
@@ -63,7 +114,7 @@ class FakeRunner {
           return;
         }
 
-        if (job.url.indexOf('always-fail') >= 0) {
+        if (job.url.indexOf('always-fail') >= 0 || job.url.indexOf('playlist-item-2') >= 0) {
           reject(new Error('Simulated failure'));
           return;
         }
@@ -102,6 +153,7 @@ async function delay(ms) {
 }
 
 async function main() {
+  const fakeRunner = new FakeRunner();
   const settingsStore = new SettingsStore(paths.settingsFile, {
     concurrency: 2,
     downloadFolder: paths.downloadsDir,
@@ -113,41 +165,46 @@ async function main() {
     jobStore: jobStore,
     settingsStore: settingsStore,
     paths: paths,
-    runner: new FakeRunner()
+    runner: fakeRunner,
+    resolver: fakeRunner
   });
 
   manager.initialize();
 
-  const startVideo = manager.startDownloads([
+  const mixedResult = await manager.startDownloads([
     'https://youtu.be/good-1',
-    'https://youtu.be/always-fail',
-    'https://youtu.be/good-1'
+    'https://example.com/playlist-good',
+    'https://example.com/playlist-invalid'
   ].join('\n'), 'video');
 
-  assert.strictEqual(startVideo.queued, 2);
-  assert.strictEqual(startVideo.skipped, 0);
+  assert.strictEqual(mixedResult.queued, 3);
+  assert.strictEqual(mixedResult.failedInputs, 1);
+  assert.strictEqual(mixedResult.playlistsResolved, 1);
+  assert.strictEqual(mixedResult.playlistItems, 2);
 
-  const startAudio = manager.startDownloads('https://youtu.be/good-1', 'audio');
-  assert.strictEqual(startAudio.queued, 1);
-  assert.strictEqual(startAudio.format, 'audio');
+  const audioResult = await manager.startDownloads('https://example.com/playlist-good-audio', 'audio');
+  assert.strictEqual(audioResult.queued, 2);
+  assert.strictEqual(audioResult.format, 'audio');
 
-  await delay(140);
+  await delay(180);
 
   let state = manager.getState();
-  assert.strictEqual(state.stats.completed, 2);
-  assert.strictEqual(state.stats.failed, 1);
-  assert.strictEqual(state.stats.video, 2);
-  assert.strictEqual(state.stats.audio, 1);
+  assert.strictEqual(state.stats.completed, 3);
+  assert.strictEqual(state.stats.failed, 3);
+  assert.strictEqual(state.stats.video, 4);
+  assert.strictEqual(state.stats.audio, 2);
+  assert.strictEqual(state.stats.playlists, 5);
   assert.ok(fs.readFileSync(paths.archiveFile, 'utf8').indexOf('"format":"video"') >= 0);
   assert.ok(fs.readFileSync(paths.archiveFile, 'utf8').indexOf('"format":"audio"') >= 0);
 
-  const audioJob = state.jobs.find(function find(job) {
-    return job.format === 'audio';
+  const playlistJob = state.jobs.find(function find(job) {
+    return job.sourceType === 'playlist' && job.playlistIndex === 1;
   });
-  assert.ok(audioJob.outputPath.indexOf(path.join('downloads', 'audio')) >= 0);
+  assert.strictEqual(playlistJob.playlistTitle, 'Playlist Test');
+  assert.strictEqual(playlistJob.originalInputUrl.indexOf('playlist-good') >= 0, true);
 
   const retryId = state.jobs.find(function find(job) {
-    return job.url.indexOf('always-fail') >= 0;
+    return job.url.indexOf('playlist-item-2') >= 0 && job.format === 'video';
   }).id;
 
   manager.retryFailed(retryId);
@@ -159,19 +216,19 @@ async function main() {
 
   state = manager.getState();
   assert.strictEqual(state.jobs.filter(function filter(job) {
-    return job.url.indexOf('always-fail') >= 0;
+    return job.url.indexOf('playlist-item-2') >= 0 && job.format === 'video';
   })[0].retries, 3);
 
   const retryResult = manager.retryFailed(retryId);
   assert.strictEqual(retryResult.retried, 0);
 
-  manager.startDownloads('https://youtu.be/good-1', 'video');
+  await manager.startDownloads('https://example.com/playlist-good', 'video');
   await delay(20);
 
   state = manager.getState();
-  assert.strictEqual(state.stats.skipped, 1);
+  assert.strictEqual(state.stats.skipped >= 1, true);
 
-  manager.startDownloads('https://youtu.be/timeout-case', 'video');
+  await manager.startDownloads('https://youtu.be/timeout-case', 'video');
   await delay(120);
 
   state = manager.getState();

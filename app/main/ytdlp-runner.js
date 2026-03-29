@@ -34,10 +34,130 @@ function killProcessTree(pid) {
   }
 }
 
+function normalizeResolvedUrl(entry, fallbackUrl) {
+  const candidates = [
+    entry && entry.webpage_url,
+    entry && entry.original_url,
+    entry && entry.url
+  ];
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    if (candidate && /^https?:\/\//i.test(candidate)) {
+      return candidate;
+    }
+  }
+
+  if (entry && entry.id) {
+    return 'https://www.youtube.com/watch?v=' + entry.id;
+  }
+
+  return fallbackUrl || '';
+}
+
 class YtDlpRunner {
   constructor(appPaths, logger) {
     this.appPaths = appPaths;
     this.logger = typeof logger === 'function' ? logger : function noop() {};
+  }
+
+  ensureYtDlpExists() {
+    const ytdlpPath = path.join(this.appPaths.binDir, 'yt-dlp.exe');
+    if (!fs.existsSync(ytdlpPath)) {
+      throw new Error('yt-dlp.exe bulunamadi. app/bin klasorunu kontrol edin.');
+    }
+
+    return ytdlpPath;
+  }
+
+  ensureFfmpegExists() {
+    const ffmpegPath = path.join(this.appPaths.binDir, 'ffmpeg.exe');
+    if (!fs.existsSync(ffmpegPath)) {
+      throw new Error('ffmpeg.exe bulunamadi. app/bin klasorunu kontrol edin.');
+    }
+  }
+
+  buildResolveArgs(inputUrl) {
+    return [
+      '--dump-single-json',
+      '--flat-playlist',
+      '--ignore-config',
+      '--no-warnings',
+      '--extractor-args',
+      'youtube:player_client=android',
+      inputUrl
+    ];
+  }
+
+  resolveInput(inputUrl) {
+    const ytdlpPath = this.ensureYtDlpExists();
+    const result = spawnSync(ytdlpPath, this.buildResolveArgs(inputUrl), {
+      cwd: this.appPaths.baseDir,
+      windowsHide: true,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024
+    });
+
+    if (result.status !== 0) {
+      throw new Error((result.stderr || result.stdout || 'Playlist/video analiz edilemedi.').trim());
+    }
+
+    const payload = String(result.stdout || '').trim();
+    if (!payload) {
+      throw new Error('yt-dlp metadata donmedi.');
+    }
+
+    const parsed = JSON.parse(payload);
+    if (parsed && Array.isArray(parsed.entries)) {
+      const playlistUrl = normalizeResolvedUrl(parsed, inputUrl);
+      const playlistTitle = parsed.title || parsed.playlist_title || '';
+      const items = parsed.entries
+        .map(function map(entry, index) {
+          const resolvedUrl = normalizeResolvedUrl(entry, '');
+          if (!resolvedUrl) {
+            return null;
+          }
+
+          return {
+            url: resolvedUrl,
+            title: entry.title || '',
+            sourceType: 'playlist',
+            playlistUrl: playlistUrl,
+            playlistTitle: playlistTitle,
+            playlistIndex: Number(entry.playlist_index || entry.index || index + 1),
+            originalInputUrl: inputUrl
+          };
+        })
+        .filter(Boolean);
+
+      if (!items.length) {
+        throw new Error('Playlist icinden gecerli item cikarilamadi.');
+      }
+
+      return {
+        sourceType: 'playlist',
+        playlistTitle: playlistTitle,
+        playlistUrl: playlistUrl,
+        originalInputUrl: inputUrl,
+        items: items
+      };
+    }
+
+    return {
+      sourceType: 'single',
+      originalInputUrl: inputUrl,
+      items: [
+        {
+          url: normalizeResolvedUrl(parsed, inputUrl),
+          title: parsed.title || '',
+          sourceType: 'single',
+          playlistUrl: '',
+          playlistTitle: '',
+          playlistIndex: null,
+          originalInputUrl: inputUrl
+        }
+      ]
+    };
   }
 
   buildArgs(job, downloadFolder) {
@@ -86,16 +206,8 @@ class YtDlpRunner {
   start(job, options) {
     const downloadFolder = options.downloadFolder;
     const onUpdate = options.onUpdate;
-    const ytdlpPath = path.join(this.appPaths.binDir, 'yt-dlp.exe');
-    const ffmpegPath = path.join(this.appPaths.binDir, 'ffmpeg.exe');
-
-    if (!fs.existsSync(ytdlpPath)) {
-      throw new Error('yt-dlp.exe bulunamadi. app/bin klasorunu kontrol edin.');
-    }
-
-    if (!fs.existsSync(ffmpegPath)) {
-      throw new Error('ffmpeg.exe bulunamadi. app/bin klasorunu kontrol edin.');
-    }
+    const ytdlpPath = this.ensureYtDlpExists();
+    this.ensureFfmpegExists();
 
     fs.mkdirSync(downloadFolder, { recursive: true });
 
