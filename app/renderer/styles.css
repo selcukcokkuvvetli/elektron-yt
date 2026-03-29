@@ -169,6 +169,45 @@ textarea {
   margin-top: 18px;
 }
 
+.format-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.format-toggle {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(125, 173, 192, 0.1);
+  border: 1px solid rgba(125, 173, 192, 0.12);
+}
+
+.format-toggle label {
+  position: relative;
+}
+
+.format-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.format-toggle span {
+  display: inline-flex;
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.format-toggle input:checked + span {
+  background: linear-gradient(135deg, rgba(40, 212, 180, 0.24), rgba(40, 212, 180, 0.08));
+  color: var(--text);
+}
+
 button {
   border: 0;
   border-radius: 999px;
@@ -264,6 +303,17 @@ tbody tr:hover {
   border: 1px solid rgba(125, 173, 192, 0.14);
 }
 
+.format-chip {
+  display: inline-flex;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 173, 192, 0.14);
+  background: rgba(125, 173, 192, 0.1);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
 .status.completed,
 .status.downloading {
   background: rgba(40, 212, 180, 0.12);
@@ -333,5 +383,10 @@ tbody tr:hover {
 
   .hero-meta {
     min-width: 0;
+  }
+
+  .format-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

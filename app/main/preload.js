@@ -16,8 +16,8 @@ contextBridge.exposeInMainWorld('appApi', {
   bootstrap: function bootstrap() {
     return ipcRenderer.invoke('app:bootstrap');
   },
-  startDownloads: function startDownloads(text) {
-    return ipcRenderer.invoke('downloads:start', { text: text });
+  startDownloads: function startDownloads(text, format) {
+    return ipcRenderer.invoke('downloads:start', { text: text, format: format });
   },
   stopDownloads: function stopDownloads() {
     return ipcRenderer.invoke('downloads:stop');

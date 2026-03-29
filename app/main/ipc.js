@@ -26,7 +26,10 @@ function registerIpc(options) {
   });
 
   ipcMain.handle('downloads:start', function start(event, payload) {
-    return manager.startDownloads(payload && payload.text ? payload.text : '');
+    return manager.startDownloads(
+      payload && payload.text ? payload.text : '',
+      payload && payload.format ? payload.format : 'video'
+    );
   });
 
   ipcMain.handle('downloads:stop', function stop() {

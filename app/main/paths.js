@@ -2,21 +2,31 @@ const fs = require('fs');
 const path = require('path');
 
 function resolveAppPaths(electronApp) {
-  const baseDir = electronApp.isPackaged
+  const runtimeDir = electronApp.isPackaged
     ? path.dirname(process.execPath)
     : path.resolve(__dirname, '..', '..');
+  const portableDataDir = process.env.PORTABLE_EXECUTABLE_DIR
+    ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data')
+    : null;
+  const userDataDir = electronApp.isPackaged
+    ? (portableDataDir || electronApp.getPath('userData'))
+    : path.join(runtimeDir, 'data');
+  const downloadsDir = electronApp.isPackaged
+    ? (portableDataDir ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'downloads') : path.join(userDataDir, 'downloads'))
+    : path.join(runtimeDir, 'downloads');
 
   return {
-    baseDir,
-    dataDir: path.join(baseDir, 'data'),
-    logsDir: path.join(baseDir, 'data', 'logs'),
-    downloadsDir: path.join(baseDir, 'downloads'),
-    jobsFile: path.join(baseDir, 'data', 'jobs.json'),
-    settingsFile: path.join(baseDir, 'data', 'settings.json'),
-    archiveFile: path.join(baseDir, 'data', 'archive.txt'),
+    baseDir: runtimeDir,
+    runtimeDir,
+    dataDir: userDataDir,
+    logsDir: path.join(userDataDir, 'logs'),
+    downloadsDir: downloadsDir,
+    jobsFile: path.join(userDataDir, 'jobs.json'),
+    settingsFile: path.join(userDataDir, 'settings.json'),
+    archiveFile: path.join(userDataDir, 'archive.txt'),
     binDir: electronApp.isPackaged
       ? path.join(process.resourcesPath, 'bin')
-      : path.join(baseDir, 'app', 'bin')
+      : path.join(runtimeDir, 'app', 'bin')
   };
 }
 

@@ -12,7 +12,12 @@
     "test:stores": "node scripts/test-stores.js",
     "test:logic": "node scripts/test-logic.js",
     "test:smoke": "node scripts/smoke-electron.js",
-    "build:portable": "electron-builder --win portable"
+    "build:portable": "electron-builder --win portable",
+    "build:installer": "electron-builder --win nsis",
+    "build:release": "electron-builder --win portable nsis"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "23.3.13",
@@ -39,6 +44,11 @@
       }
     ],
     "asar": true,
+    "publish": {
+      "provider": "github",
+      "owner": "selcukcokkuvvetli",
+      "repo": "elektron-yt"
+    },
     "win": {
       "target": [
         {
@@ -46,9 +56,27 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "executableName": "ElektronYT"
+    },
+    "portable": {
+      "artifactName": "${productName} Portable ${version}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Elektron YT",
+      "deleteAppDataOnUninstall": false
     }
   }
 }

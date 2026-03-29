@@ -5,6 +5,7 @@ const JobStore = require('./job-store');
 const SettingsStore = require('./settings-store');
 const DownloadManager = require('./download-manager');
 const registerIpc = require('./ipc');
+const setupAutoUpdater = require('./auto-updater');
 
 let manager = null;
 let mainWindow = null;
@@ -43,7 +44,9 @@ app.whenReady().then(function onReady() {
 
   const settingsStore = new SettingsStore(appPaths.settingsFile, {
     concurrency: 3,
-    downloadFolder: appPaths.downloadsDir
+    downloadFolder: appPaths.downloadsDir,
+    maxRetries: 3,
+    jobTimeoutMs: 180000
   });
 
   const jobStore = new JobStore(appPaths.jobsFile);
@@ -58,6 +61,10 @@ app.whenReady().then(function onReady() {
   registerIpc({
     mainWindow: window,
     manager: manager
+  });
+  setupAutoUpdater({
+    app: app,
+    logger: manager.log.bind(manager)
   });
 
   app.on('activate', function onActivate() {

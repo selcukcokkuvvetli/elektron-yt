@@ -37,6 +37,19 @@
             <h2>Link Girisi</h2>
             <button id="pickFolderButton" class="ghost">Klasor Degistir</button>
           </div>
+          <div class="format-bar">
+            <span class="meta-label">Indirme formati</span>
+            <div class="format-toggle">
+              <label>
+                <input type="radio" name="downloadFormat" value="video" checked />
+                <span>Video</span>
+              </label>
+              <label>
+                <input type="radio" name="downloadFormat" value="audio" />
+                <span>MP3</span>
+              </label>
+            </div>
+          </div>
           <textarea
             id="urlInput"
             placeholder="Her satira bir YouTube linki gelecek sekilde yapistirin"
@@ -63,6 +76,7 @@
               <thead>
                 <tr>
                   <th>No</th>
+                  <th>Format</th>
                   <th>Title</th>
                   <th>URL</th>
                   <th>Status</th>
@@ -75,7 +89,7 @@
               </thead>
               <tbody id="jobsBody">
                 <tr>
-                  <td colspan="9" class="empty">Henuz job yok.</td>
+                  <td colspan="10" class="empty">Henuz job yok.</td>
                 </tr>
               </tbody>
             </table>

@@ -1,0 +1,119 @@
+SETUP / INSTALLER / AUTO UPDATE TALİMATLARI (MP3 DAHİL FINAL - 18 FAZ)
+=========================================================================
+
+FAZ 1 — MP3 DESTEK EKLEME
+------------------------
+- UI: Format seçimi (Video / MP3)
+- job.format alanı ekle
+- MP3: yt-dlp + ffmpeg extract audio
+- klasör:
+  downloads/video
+  downloads/audio
+- archive: url + format
+
+FAZ 2 — JOB MODEL GÜNCELLEME
+---------------------------
+- jobs.json içine format alanı ekle
+- state uyumluluğu sağla
+
+FAZ 3 — UI GÜNCELLEME
+--------------------
+- format seçici ekle
+- tabloya format kolonu ekle
+
+FAZ 4 — DOWNLOAD ENGINE UPDATE
+-----------------------------
+- video ve mp3 ayrı parametre
+- ffmpeg path kontrol
+
+FAZ 5 — ARCHIVE UPDATE
+---------------------
+- url yerine url+format kullan
+
+FAZ 6 — RETRY LOGIC
+------------------
+- format korunarak retry
+
+FAZ 7 — KLASÖR YAPISI
+--------------------
+- video/audio ayrımı
+
+FAZ 8 — PERFORMANS TEMELİ
+------------------------
+- concurrency: 3
+- queue FIFO
+
+FAZ 9 — PROCESS YÖNETİMİ
+-----------------------
+- her job ayrı process
+- cleanup zorunlu
+
+FAZ 10 — UI OPTİMİZASYON
+-----------------------
+- throttle update
+- diff render
+
+FAZ 11 — MEMORY OPTİMİZASYON
+---------------------------
+- minimal state
+- gereksiz veri yok
+
+FAZ 12 — RETRY & TIMEOUT
+-----------------------
+- max retry: 3
+- stuck job fail
+
+FAZ 13 — EXE OPTİMİZASYON
+------------------------
+- asar aktif
+- devDependencies çıkar
+- asset küçült
+
+FAZ 14 — PORTABLE BUILD
+----------------------
+- kurulum gerektirmez
+- manuel update
+
+FAZ 15 — INSTALLER BUILD
+-----------------------
+- NSIS setup
+- shortcut
+- uninstall
+
+FAZ 16 — DATA AYRIMI
+-------------------
+- app files / user data ayrımı
+
+FAZ 17 — GITHUB AUTO UPDATE
+--------------------------
+- public repo
+- GitHub Releases
+- electron-updater
+- sadece installer update alır
+
+FAZ 18 — RELEASE FLOW
+--------------------
+1. version artır
+2. build al
+3. GitHub release
+4. update yayında
+
+GENEL PROMPT
+------------
+Projeye:
+- MP3 desteği
+- performans optimizasyonu
+- portable + installer
+- GitHub auto update
+
+ekle.
+
+Kurallar:
+- mimariyi bozma
+- yt-dlp + ffmpeg
+- JSON state
+- concurrency kontrolü
+- archive url+format
+
+HEDEF:
+Tek komutla production hazır uygulama.
