@@ -35,6 +35,7 @@
     "check:binaries": "node scripts/bootstrap-binaries.js --check",
     "test:youtube": "node scripts/test-youtube.js",
     "test:packages": "node scripts/test-packages.js",
+    "test:installer": "node scripts/test-installer.js",
     "build:process-host": "node scripts/build-process-host.js"
   },
   "dependencies": {

@@ -25,7 +25,8 @@ async function runBinary(executable, args) {
 
 async function main() {
   const workspace = createWorkspace('runner');
-  const paths = { ...workspace.paths, binDir: path.resolve(__dirname, '..', 'app', 'bin') };
+  const paths = { ...workspace.paths, binDir: process.env.ELEKTRON_YT_TEST_BIN_DIR
+    ? path.resolve(process.env.ELEKTRON_YT_TEST_BIN_DIR) : path.resolve(__dirname, '..', 'app', 'bin') };
   const runner = new YtDlpRunner(paths);
   runner.ensureYtDlpExists();
   runner.ensureFfmpegExists();

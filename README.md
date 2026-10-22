@@ -66,6 +66,8 @@ npm audit --audit-level=moderate
 
 Native süreç testi, iptal ve normal bitişte ayrı başlatılmış alt süreçlerin de kapandığını ve Unicode/tırnaklı argümanların korunduğunu doğrular. Testler geçici veri/profil klasörleri kullanır. Smoke testi gerçek repo verilerinin hash'lerini karşılaştırır. Performans raporu `verification/performance.json` dosyasına yazılır. `test:packages`, unpacked ve portable paketlerde eski job/ayar/arşiv biçimleriyle ilk açılışı ve yeniden açılışı da sınar; sonucu `verification/package-migration.json` dosyasına yazar. Bu fixture testi, gerçek kurulu 1.1.0 üzerinden installer yükseltmesi yerine geçmez. Windows CI aynı kontrolleri, gerçek portable başlatıcı testini ve yerel build önkontrolünü çalıştırır; otomatik public yayın yapmaz.
 
+`test:installer`, açıkça etkinleştirilmiş geçici GitHub-hosted Windows makinesinde gerçek kullanıcı bazlı kurulum/kaldırmayı, özel klasör/kısayolları, yayımlanmış 1.1.0 → 1.2.0 veri geçişini ve yerel feed üzerinden gerçek güncellemeyi sınar. Güncel updater için sonraki patch sürümünde yalnızca teste ait installer oluşturur; public yayın yapmaz. Erişilemeyen feed/yanlış SHA512 ve portable ayrımı da kontrol edilir. Kullanıcı bilgisayarında çalışmayı reddeder. Sonuç `verification/installer.json` ve CI'daki `windows-verification-reports` artifact'inde tutulur; kapsam sınırları iyileştirme planındadır.
+
 ## Yerel paket hazırlama
 
 ```powershell

@@ -38,6 +38,17 @@ jobs:
           if ($info.dirty) { throw "Package provenance contains uncommitted changes." }
       - run: npm run test:packages
       - run: npm run release:check
+      - name: Disposable Windows install, migration and update tests
+        run: npm run test:installer
+        env:
+          ELEKTRON_YT_DISPOSABLE_INSTALLER_TEST: '1'
+      - name: Save verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-verification-reports
+          path: verification/*.json
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: windows-packages
