@@ -14,7 +14,7 @@ Bu dosya, ayrıntılı proje incelemesinde bulunan sorunların giderilmesi ve ye
 | Sürüm numarasının değiştirilmesi | Tamamlandı: manifest ve lockfile `1.2.0` |
 | GitHub kullanımı | Kullanıcı kararıyla yalnızca kod ve sürüm geçmişi; Windows verification ve Installer candidate verification workflow dosyaları kaldırıldı. Yeni push/PR otomatik test, build veya yayın başlatmaz |
 | Yeni build / GitHub yayını | Önceki temiz commit build'i ve uzak Windows CI kanıtları tarihsel kayıt olarak korunur. Bundan sonraki test ve paketleme yerelde elle yapılır. Public sürüm yayını yapılmadı |
-| Sıradaki adım | Yerel test/paket kontrolleriyle devam et. Tam installer/güncelleme kabulü ayrı geçici Windows test ortamını bekliyor; CI denemeleri durduruldu ve eksik testler tamamlandı sayılmadı |
+| Sıradaki adım | Yerel test ve paket doğrulaması tekrar geçti; kalan iş ayrı geçici Windows ortamında tam installer/güncelleme kabulü. CI denemeleri durduruldu ve eksik testler tamamlandı sayılmadı |
 
 **Sürüm kararı:** İndirme motoru, analiz yaşam döngüsü, depolama, bağımlılıklar ve dağıtım akışındaki değişiklikleri tek bir `1.2.0` sürümünde toplamak hedefleniyor. Mevcut kullanıcı verileriyle uyumluluk korunacak. Sürüm numarası yerel düzeltme testlerinden sonra `1.2.0` olarak artırıldı; `package.json` ve `package-lock.json` birlikte güncellendi. Hedef sürüm değişirse gerekçesi karar günlüğüne yazılacak.
 
@@ -313,8 +313,8 @@ Uygulama sırası tablodaki sıradır. Her faz kendi testleriyle tamamlanır; te
 - [x] Kod imzalama mevcutsa sertifika ve yayıncı doğrulamasını yap; mevcut değilse paket durumunu ve etkisini sürüm kaydında açıkça belirt.
 - [x] Test edilen commit, araç/binary sürümleri ve paket hash'lerini sürüm kaydına yaz.
 - [x] Değişiklikleri inceleyip commit/push yap; test edilen commit üzerinden yeniden paketle. İlk temiz kaynak commit'i `7ec997d0b95741bece894922229bb4bfa4f709c9`; build ve dry-run `dirty: false`, `publishable: true` geçti. Bu teknik önkontrol manuel sürüm kabulü yerine geçmez.
-- [ ] Son manuel kontroller geçtikten sonra public yayın adımını ayrı yürüt.
-- [ ] Yayın yapılırsa public asset indirme, güncelleme metadata'sı ve sürüm bağlantısını doğrula; bu belgeye kaydet.
+- [ ] İsteğe bağlı, mevcut GitHub kapsamının dışında: ayrıca yayın kararı verilirse manuel kontrollerden sonra public yayın adımını yürüt.
+- [ ] Yayın kararı verilirse public asset indirme, güncelleme metadata'sı ve sürüm bağlantısını doğrula; bu belgeye kaydet.
 
 **Kabul / test:** T24–T26 geçer. Paketler aynı test edilmiş kaynak durumundan üretilmiştir. Gerçekten yapılmayan temiz makine veya canlı güncelleme kontrolleri tamamlandı işaretlenmez.
 
@@ -383,6 +383,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 
 | Tarih | Faz | Yapılan iş | Kontrol / kanıt | Sonraki adım |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | 10 / Yerel tekrar | GitHub otomasyonu kaldırıldıktan sonra temiz `eeb603d` kaynağında tam test, iki paket, gerçek paket regresyonu ve dry-run yeniden geçti. Paketin gömülü Node ve binary'leriyle runner ayrıca geçti. | `verification/local-validation.log`, `verification/embedded-node-runner.log`, `verification/final.json`; audit 0 açık, üç kullanıcı veri dosyasının hash'i değişmedi. Doküman commit'i sonrası paketler son commit kimliğiyle yeniden oluşturulur; kesin kimlik `release/1.2.0/build-info.json` içindedir. | Ayrı geçici Windows ortamında kalan installer/güncelleme kabulü |
 | 2026-10-22 | Çalışma düzeni | Kullanıcının GitHub'ı yalnızca kod/sürüm takibi için kullanma kararı uygulandı; iki workflow kaldırıldı, README ve güncel durum yenilendi. | Workflow silmeleri ve doküman değişiklikleri `git diff --check` ile kontrol edildi. Son iki installer koşusu başarısız bitmişti; yeni CI denemesi başlatılmıyor. | Yerel kontroller; eksik installer kabulü için ayrı geçici Windows ortamı |
 | 2026-10-22 | Plan | İnceleme bulguları, fazlar, test matrisi ve hedef belgelendi. | Başlangıç commit'i: `269052febfa4729b958ddd12c9c17d7782137e2c`. İlk durumda README değişikliği ve bu yeni plan dosyası vardı. | Faz 00 |
 | 2026-10-22 | 00–04 | Yalıtım, gerçek ilerleme/timeout, asenkron analiz, iptal/dedupe/retry ve atomik depolama uygulandı. | Store, engine, legacy/archive fixture ve gerçek süreç regresyon testleri geçti. Kullanıcı veri dosyaları değişmedi. | Runtime/güvenlik |
@@ -414,7 +415,28 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 
 ## 9. Son yerel doğrulama — 22 Ekim 2026
 
-Yerel aday **1.2.0** hazırdır. İlk temiz commit build'i ve uzak Windows CI geçti. Public yayın yapılmadı; manuel installer kurulumu/kaldırma ve gerçek uçtan uca güncelleme tamamlandı olarak işaretlenmedi.
+Yerel aday **1.2.0** yeniden doğrulandı. GitHub otomasyonu kapatıldıktan sonra tam yerel testler, paketleme ve paket regresyonu geçti. Public yayın yapılmadı; tam manuel installer kabulü ve gerçek uçtan uca güncelleme tamamlandı olarak işaretlenmedi.
+
+### Güncel yerel tekrar — GitHub otomasyonu sonrası
+
+Test edilen temiz kaynak: `eeb603d9e5254e13943a3b269ce22cf7079ad61b`. Ortam: Windows 11 `10.0.26200`, Node `24.22.1`, npm `11.19.1`, Electron `45.0.0` ve gömülü Node `24.22.0`. Doküman güncellemesinden sonra paketler son commit'ten yeniden oluşturulur; güncel paket kimliği/hash'leri için `release/1.2.0/build-info.json`, toplu sonuç için `verification/final.json` esas alınır.
+
+| Kontrol | Sonuç / kanıt |
+| --- | --- |
+| `npm run release:prepare -- --version 1.2.0` | Geçti: tam testler, portable ve NSIS aynı build'de, gerçek paket testleri ve yerel dry-run. Günlük: `verification/local-validation.log`. |
+| Gerçek runner T01–T08 | MP4, MP3, metadata, aktif aktarım/idle timeout ayrımı, takılan aktarımın sonlandırılması, analiz iptali ve kısmi playlist kontrolleri geçti. |
+| Paket içindeki runtime/binary ile runner | `win-unpacked/ElektronYT.exe` gömülü Node modunda ve kendi `resources/bin` dosyalarıyla aynı runner testlerini geçti. Günlük: `verification/embedded-node-runner.log`. Bu kontrol gerçek NSIS kurulumunu kapsamaz. |
+| Gerçek unpacked ve portable | Renderer/IPC smoke ve ikinci örnek kilidi geçti. Her hedefte eski veri fixture'ı iki kez açıldı; iş, ayar ve iki arşiv biçimi korundu. Rapor: `verification/package-migration.json`. |
+| Bağımlılık taraması | `npm audit --json`: toplam 0 açık. Rapor: `verification/audit-local-current.json`. |
+| Performans | 5.000 iş: ilk çizim yaklaşık 2,3 ms, sıcak çizim 0,5 ms, olay döngüsü yaklaşık 5,1 ms; DOM 100 ve log 200 sınırı korundu. Rapor: `verification/performance.json`. |
+| Paket tutarlılığı | İlk tekrar adayında dry-run `dirty: false`, `publishable: true`; beş dosyanın hash/metadata ve sürüm/commit tutarlılığı doğrulandı. Bu sonuç public yayın yapıldığı anlamına gelmez. |
+| Kullanıcı verileri | `data/jobs.json`, `data/settings.json`, `data/archive.txt` başlangıç hash'leriyle aynı. `verification/final.json` içinde kayıtlı. |
+| İmzalama | Portable ve installer `NotSigned`; imzalama yapılmadı. |
+| GitHub | Yeni Actions çalıştırılmadı, paket veya release yüklenmedi. GitHub kod/sürüm geçmişi için kullanılıyor. |
+
+Kalan kabul: ayrı geçici Windows ortamında interaktif wizard/UAC/tüm kullanıcılar kurulumu, gerçek kurulu 1.1.0 → 1.2.0 verisi, pozitif/negatif gerçek updater akışı ve salt okunur portable konumu. Önceki CI'daki timeout hatası yerelde bu tekrarda oluşmadı; bu, ayrı Windows ortamındaki tam installer zincirinin düzeldiğine dair kanıt sayılmaz.
+
+### Önceki yerel ve uzak doğrulamalar — tarihsel kayıt
 
 | Kontrol | Sonuç |
 | --- | --- |
