@@ -49,8 +49,9 @@ async function main() {
   const dataDir = path.join(process.env.APPDATA, pkg.name);
   assert.ok(!fs.existsSync(dataDir), 'Existing product data must not be modified');
   const workspace = createWorkspace('installer');
-  const installDir = path.join(workspace.root, 'Özel Klasör', 'Elektron YT');
-  const executable = path.join(installDir, 'ElektronYT.exe');
+  const requestedInstallDir = path.join(workspace.root, 'Özel Klasör', 'Elektron YT');
+  let installDir = requestedInstallDir;
+  let executable = path.join(installDir, 'ElektronYT.exe');
   const output = path.join(root, 'release', pkg.version);
   const installer = path.join(output, 'Elektron-YT-Setup-' + pkg.version + '.exe');
   const evidence = path.join(root, 'verification');
@@ -135,11 +136,28 @@ async function main() {
     // CreateProcess gets the executable separately; no shell is involved.
     await run(file, ['/S', '/currentuser', '/D=' + installDir], { timeoutMs: 180000,
       windowsVerbatimArguments: true, argv0: '"' + file + '"' });
-    await waitUntil(async () => {
-      if (installedVersion(installDir) !== version) return false;
-      const state = await snapshot();
-      return state.registry.some(entry => entry.DisplayVersion === version) && state.desktop.exists && state.startMenu.exists;
-    }, 'installation files, registry and shortcuts ' + version);
+    try {
+      await waitUntil(async () => {
+        const state = await snapshot();
+        const entry = state.registry.find(item => item.DisplayVersion === version);
+        const command = entry && /^"([^"]+)"/.exec(entry.UninstallString);
+        if (!command) return false;
+        const actual = path.dirname(command[1]);
+        if (!fs.existsSync(actual) || !fs.existsSync(requestedInstallDir)) return false;
+        // Older assisted NSIS builds may append their application directory name.
+        // Follow the registered location only when it stays inside our requested folder.
+        const relative = path.relative(fs.realpathSync.native(requestedInstallDir), fs.realpathSync.native(actual));
+        assert.ok(!relative.startsWith('..') && !path.isAbsolute(relative), 'Installer escaped the requested test folder: ' + actual);
+        if (installedVersion(actual) !== version) return false;
+        installDir = actual;
+        executable = path.join(actual, 'ElektronYT.exe');
+        return state.desktop.exists && state.startMenu.exists;
+      }, 'installation files, registry and shortcuts ' + version);
+    } catch (error) {
+      report.installationFailure = { expectedVersion: version, observedVersion: installedVersion(installDir),
+        state: await snapshot(), files: fs.existsSync(installDir) ? fs.readdirSync(installDir) : [] };
+      throw new Error(error.message + ': ' + JSON.stringify(report.installationFailure));
+    }
     await verifyRegistration(version);
   };
   const uninstall = async () => {
