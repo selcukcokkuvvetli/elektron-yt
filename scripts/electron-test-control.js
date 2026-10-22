@@ -9,7 +9,8 @@ async function debuggerPort() {
   return port;
 }
 function debuggerArgs(port) {
-  return ['--remote-debugging-port=' + port, '--remote-debugging-address=127.0.0.1', '--remote-allow-origins=*'];
+  return ['--remote-debugging-port=' + port, '--remote-debugging-address=127.0.0.1', '--remote-allow-origins=*',
+    '--disable-gpu', '--disable-software-rasterizer'];
 }
 async function closeRenderer(port) {
   let page;
