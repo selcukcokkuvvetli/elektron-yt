@@ -383,6 +383,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 
 | Tarih | Faz | Yapılan iş | Kontrol / kanıt | Sonraki adım |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | Gerçek playlist | Kullanıcının ikinci bağlantısındaki 44 öğe, 1.2.0 paketinin gerçek DownloadManager ve gömülü Node/binary'leriyle toplu MP3 akışında denendi. | 43 MP3 indirildi; tamamı ffmpeg ile baştan sona çözümlendi. 1 video YouTube telif kaldırma talebiyle silinmişti; kuyruk sonraki parçalarla devam etti. Toplam 336.421.005 bayt; üç kullanıcı veri dosyası değişmedi. Rapor: `verification/playlist-bulk-mp3.json`. | Ayrı Windows ortamındaki installer/güncelleme kabulü açık |
 | 2026-10-22 | 10 / Yerel tekrar | GitHub otomasyonu kaldırıldıktan sonra temiz `eeb603d` kaynağında tam test, iki paket, gerçek paket regresyonu ve dry-run yeniden geçti. Paketin gömülü Node ve binary'leriyle runner ayrıca geçti. | `verification/local-validation.log`, `verification/embedded-node-runner.log`, `verification/final.json`; audit 0 açık, üç kullanıcı veri dosyasının hash'i değişmedi. Doküman commit'i sonrası paketler son commit kimliğiyle yeniden oluşturulur; kesin kimlik `release/1.2.0/build-info.json` içindedir. | Ayrı geçici Windows ortamında kalan installer/güncelleme kabulü |
 | 2026-10-22 | Çalışma düzeni | Kullanıcının GitHub'ı yalnızca kod/sürüm takibi için kullanma kararı uygulandı; iki workflow kaldırıldı, README ve güncel durum yenilendi. | Workflow silmeleri ve doküman değişiklikleri `git diff --check` ile kontrol edildi. Son iki installer koşusu başarısız bitmişti; yeni CI denemesi başlatılmıyor. | Yerel kontroller; eksik installer kabulü için ayrı geçici Windows ortamı |
 | 2026-10-22 | Plan | İnceleme bulguları, fazlar, test matrisi ve hedef belgelendi. | Başlangıç commit'i: `269052febfa4729b958ddd12c9c17d7782137e2c`. İlk durumda README değişikliği ve bu yeni plan dosyası vardı. | Faz 00 |
@@ -435,6 +436,28 @@ Test edilen temiz kaynak: `eeb603d9e5254e13943a3b269ce22cf7079ad61b`. Ortam: Win
 | GitHub | Yeni Actions çalıştırılmadı, paket veya release yüklenmedi. GitHub kod/sürüm geçmişi için kullanılıyor. |
 
 Kalan kabul: ayrı geçici Windows ortamında interaktif wizard/UAC/tüm kullanıcılar kurulumu, gerçek kurulu 1.1.0 → 1.2.0 verisi, pozitif/negatif gerçek updater akışı ve salt okunur portable konumu. Önceki CI'daki timeout hatası yerelde bu tekrarda oluşmadı; bu, ayrı Windows ortamındaki tam installer zincirinin düzeldiğine dair kanıt sayılmaz.
+
+### Kullanıcının 97 parçalık playlist denemesi — erişim engeli
+
+22 Ekim 2026 tarihinde kullanıcının verdiği video + playlist bağlantısı, gerçek 1.2.0 paketinin DownloadManager, yt-dlp/ffmpeg ve gömülü Node runtime'ıyla ayrı test verisi/indirme klasöründe denendi. Uygulama bağlantıdan yalnızca bir video çözdü; o video MP3 olarak indirildi (10.077.572 bayt) ve ffmpeg ile baştan sona çözümlenerek doğrulandı. Kullanıcının üç mevcut veri dosyasının hash'i değişmedi.
+
+Aynı playlist kimliğinin doğrudan `/playlist?list=...` adresine YouTube **“The playlist does not exist”** yanıtını verdi. Bu yanıtın gizlilik, kaldırılma veya yanlış bağlantıdan hangisine bağlı olduğu doğrulanamadı. **İlk bağlantıdaki 97 parçalık toplu MP3 indirme doğrulanmadı.** İlk denemenin bağlantı ve parça bilgileri Git'e eklenmeyen `verification/playlist-97-first-link.json` raporunda tutuluyor. Test MP3'ü ayrı `downloads/playlist-97-mp3-*` klasöründe korundu. Kullanıcının daha sonra gönderdiği ikinci bağlantının sonucu aşağıdadır.
+
+### İkinci bağlantı — gerçek toplu MP3 denemesi tamamlandı
+
+Kullanıcının yeni bağlantısı, doğrudan playlist metadata kontrolünde **44 öğe** gösterdi (`playlist_count: 44`, 44 entry, public). Bu, önceki 97 öğe beklentisinden farklı bir listedir. Test edilen gerçek 1.2.0 paketin kaynak commit'i `4e5166dea2b4c5a9095fefe44fe82d8e62d1ae2e`; uygulama kodu değiştirilmedi.
+
+| Kontrol | Sonuç |
+| --- | --- |
+| Toplu analiz ve kuyruk | 44 öğenin tamamı ses formatında kuyruğa alındı; varsayılan 3 eşzamanlı indirme kullanıldı. |
+| MP3 çıktısı | **43 başarılı, 1 başarısız.** MP3'ler toplam **336.421.005 bayt** (yaklaşık 320,84 MiB). |
+| Başarısız öğe | 27. öğe YouTube'dan telif kaldırma talebiyle silinmişti. Bu öğenin hatası sonraki parçaları durdurmadı. |
+| Dosya sağlamlığı | 43 MP3'ün tamamı ffmpeg ile baştan sona çözümlendi; her dosyanın boyutu ve SHA256'sı rapora yazıldı. |
+| Kullanıcı verisi | Ayrı test profili ve indirme klasörü kullanıldı. `data/jobs.json`, `data/settings.json`, `data/archive.txt` hash'leri değişmedi. |
+| Yerel çıktılar | `downloads/playlist-97-mp3-iU8Seg/audio/`. Dosyalar silinmedi; Git'e eklenmez. |
+| Kanıt | `verification/playlist-bulk-mp3.json`, `verification/playlist-97-console.log`, `verification/second-playlist-metadata.json`. Bağlantı ve parça dökümleri yerelde tutulur. |
+
+**Kabul sonucu:** Bu erişilebilir listeyle gerçek toplu MP3 akışı doğrulandı. YouTube'dan kaldırılmış tek öğe indirilemedi; 97 öğenin tamamının indirildiği iddia edilmez. Bu deneme uygulamanın paket içindeki indirme motorunu kullanır; GUI'ye tıklama veya installer güncelleme testi değildir.
 
 ### Önceki yerel ve uzak doğrulamalar — tarihsel kayıt
 
