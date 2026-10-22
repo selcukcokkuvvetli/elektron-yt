@@ -392,6 +392,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 | 2026-10-22 | 10 | Kullanıcı commit/push ve devam talimatı verdi. | `main` ve `origin/main` başlangıç commit'inde eşit; kullanıcı veri dosyalarında değişiklik yok. Kaynak, test, lisans ve plan dosyaları commit kapsamına alınıyor; üretilen binary/paketler Git dışında. | Push, uzak CI ve temiz commit build'i |
 | 2026-10-22 | 10 | `7ec997d` commit'i `origin/main` üzerine pushlandı; yerel paketler temiz commit'ten yeniden üretildi. | `test:packages` ve `release:check` geçti: `dirty: false`, `publishable: true`. GitHub Actions `39766663816` kurulum, tüm testler, audit, build, gerçek paket testleri, dry-run ve artifact yüklemeyi başarıyla tamamladı. | Paket migration regresyonu |
 | 2026-10-22 | 10 | Eski kayıtların gerçek paketlerde migration/yeniden açılış kontrolü kalıcı regresyon testine eklendi. | Her hedef için ayrı legacy başlangıç verisi ve iki açılış: tamamlanmış iş/başlık/format korunur, yarım indirme iptale dönüşür, eski analiz hatası tanınır, ayarlar ve iki arşiv biçimi değişmez. Testler yalnızca geçici profili kullanır. | Güncel test commit'ini pushla; aynı CI/build/test akışını uygula; ardından manuel installer/update kontrolleri |
+| 2026-10-22 | 09–10 | İlk başarılı CI'ın dry-run günlüğünde `dirty: true` / `publishable: false` yakalandı. | `core.autocrlf=true` ile temiz geçici checkout'ta yayıncıdan gelen LF lisanslarını kopyalayınca beş lisans Git durumunda değişmiş göründü. Lisanslara `.gitattributes` ile `-text` eklendi; CI artık bootstrap ve paketleme sonrası temiz Git durumu ile `build-info.dirty: false` şartını ayrıca denetliyor. | Düzeltme commit'ini pushla; temiz checkout ve CI'da doğrula |
 
 ### Karar günlüğü
 
@@ -419,7 +420,7 @@ Yerel aday **1.2.0** hazırdır. İlk temiz commit build'i ve uzak Windows CI ge
 | Kullanıcı verileri | `jobs.json`, `settings.json`, `archive.txt` başlangıç HEAD içerikleriyle aynı. |
 | İmzalama | Her iki paket `NotSigned`; sertifika kullanılmadı. |
 | Commit / push | İlk kaynak commit'i `7ec997d0b95741bece894922229bb4bfa4f709c9`, `origin/main` üzerine gönderildi. |
-| Uzak Windows CI | [39766663816 — başarılı](https://github.com/selcukcokkuvvetli/elektron-yt/actions/runs/39766663816); tüm adımlar ve paket artifact yüklemesi geçti. Sonraki commit koşuları [Actions](https://github.com/selcukcokkuvvetli/elektron-yt/actions) üzerinden izlenir. |
+| Uzak Windows CI | [39766663816 — başarılı](https://github.com/selcukcokkuvvetli/elektron-yt/actions/runs/39766663816); tüm adımlar ve paket artifact yüklemesi geçti. Ancak bu ilk uzak adayın dry-run çıktısı satır sonu farkları yüzünden `dirty: true` idi; dağıtılabilir aday sayılmaz. `-text` ve zorunlu temiz kaynak kontrolleri eklendi. Sonraki düzeltme koşuları [Actions](https://github.com/selcukcokkuvvetli/elektron-yt/actions) üzerinden izlenir; yeni CI bu durumda başarısız olur. |
 | Paket migration | Gerçek unpacked/portable uygulamada ayrı legacy fixture'larla ilk açılış ve yeniden açılış; rapor `verification/package-migration.json`. Kurulu 1.1.0 installer geçişi ayrıca bekliyor. |
 | Public yayın | Yapılmadı. İlk temiz commit dry-run `dirty: false`, `publishable: true`; manuel kabul ve açık yayın adımı bekliyor. |
 

@@ -1,0 +1,2 @@
+# Preserve publisher bytes: these files are verified against pinned SHA256 values.
+app/licenses/*.txt -text
