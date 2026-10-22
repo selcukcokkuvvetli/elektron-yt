@@ -131,7 +131,11 @@ async function main() {
     // CreateProcess gets the executable separately; no shell is involved.
     await run(file, ['/S', '/currentuser', '/D=' + installDir], { timeoutMs: 180000,
       windowsVerbatimArguments: true, argv0: '"' + file + '"' });
-    await waitUntil(() => installedVersion(installDir) === version, 'installation ' + version);
+    await waitUntil(async () => {
+      if (installedVersion(installDir) !== version) return false;
+      const state = await snapshot();
+      return state.registry.some(entry => entry.DisplayVersion === version) && state.desktop.exists && state.startMenu.exists;
+    }, 'installation files, registry and shortcuts ' + version);
     await verifyRegistration(version);
   };
   const uninstall = async () => {
@@ -139,7 +143,11 @@ async function main() {
     const names = fs.readdirSync(installDir).filter(name => /^Uninstall.*\.exe$/i.test(name));
     assert.strictEqual(names.length, 1);
     await run(path.join(installDir, names[0]), ['/S', '/currentuser'], { timeoutMs: 120000 });
-    await waitUntil(async () => !fs.existsSync(executable) && (await snapshot()).registry.length === 0, 'uninstall registry/files');
+    await waitUntil(async () => {
+      if (fs.existsSync(executable)) return false;
+      const state = await snapshot();
+      return state.registry.length === 0 && !state.desktop.exists && !state.startMenu.exists;
+    }, 'uninstall files, registry and shortcuts');
     const state = await snapshot();
     assert.ok(!state.desktop.exists && !state.startMenu.exists, 'Uninstall left product shortcuts');
   };
