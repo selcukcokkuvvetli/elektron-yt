@@ -49,7 +49,7 @@ async function main() {
   const dataDir = path.join(process.env.APPDATA, pkg.name);
   assert.ok(!fs.existsSync(dataDir), 'Existing product data must not be modified');
   const workspace = createWorkspace('installer');
-  const requestedInstallDir = path.join(workspace.root, 'Özel Klasör', 'Elektron YT');
+  let requestedInstallDir = path.join(workspace.root, 'Özel Klasör', 'Elektron YT');
   let installDir = requestedInstallDir;
   let executable = path.join(installDir, 'ElektronYT.exe');
   const output = path.join(root, 'release', pkg.version);
@@ -132,6 +132,14 @@ async function main() {
     report.registrations.push({ version, ...state });
   };
   const install = async (file, version) => {
+    if (version === fixtures.legacyVersion) {
+      // The published builder-23 installer truncates its /D value at a space.
+      // Keep the legacy CLI fixture space-free; the current installer separately
+      // verifies the full Unicode + spaces path above.
+      requestedInstallDir = path.join(workspace.root, 'Legacy', 'ElektronYT');
+      installDir = requestedInstallDir;
+      executable = path.join(installDir, 'ElektronYT.exe');
+    }
     // NSIS requires an unquoted /D value at the end of the raw command line.
     // CreateProcess gets the executable separately; no shell is involved.
     await run(file, ['/S', '/currentuser', '/D=' + installDir], { timeoutMs: 180000,
