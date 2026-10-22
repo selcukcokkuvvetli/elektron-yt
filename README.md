@@ -6,6 +6,8 @@ Windows 10/11 x64 için Electron tabanlı YouTube video ve MP3 toplu indirme uyg
 
 Bulgular, fazlar, kabul ölçütleri, test kanıtları ve kalan işler [İyileştirme Planı](IYILESTIRME_PLANI.md) üzerinden takip edilir. Kullanıcıya dönük değişiklikler [CHANGELOG](CHANGELOG.md) dosyasındadır.
 
+GitHub kod ve sürüm geçmişi için kullanılır. Push ve pull request işlemleri GitHub Actions testi, paketleme veya yayın başlatmaz; workflow dosyaları kaldırılmıştır. Test ve paket hazırlama komutları geliştirici bilgisayarında elle çalıştırılır.
+
 ## Geliştirme ortamı
 
 - Node.js **24.22.1**, npm **11.19.1**. Sürümler `.nvmrc` ve `.node-version` içinde kayıtlıdır.
@@ -64,9 +66,9 @@ npm audit --audit-level=moderate
 
 `npm test` store/mantık/motor/güvenlik/yayın testlerini, gizli Electron smoke kontrolünü, ikinci örnek kilidini ve 300/1.000/5.000 iş ölçümlerini çalıştırır. `test:runner` gerçek yt-dlp/ffmpeg ile yerel HTTP üzerinden indirme, dönüştürme, ilerleme, timeout ve analiz iptalini doğrular. `test:all` her iki grubu birleştirir. Gerçek YouTube erişimi bu deterministik testlerin parçası değildir.
 
-Native süreç testi, iptal ve normal bitişte ayrı başlatılmış alt süreçlerin de kapandığını ve Unicode/tırnaklı argümanların korunduğunu doğrular. Testler geçici veri/profil klasörleri kullanır. Smoke testi gerçek repo verilerinin hash'lerini karşılaştırır. Performans raporu `verification/performance.json` dosyasına yazılır. `test:packages`, unpacked ve portable paketlerde eski job/ayar/arşiv biçimleriyle ilk açılışı ve yeniden açılışı da sınar; sonucu `verification/package-migration.json` dosyasına yazar. Bu fixture testi, gerçek kurulu 1.1.0 üzerinden installer yükseltmesi yerine geçmez. Windows CI aynı kontrolleri, gerçek portable başlatıcı testini ve yerel build önkontrolünü çalıştırır; otomatik public yayın yapmaz.
+Native süreç testi, iptal ve normal bitişte ayrı başlatılmış alt süreçlerin de kapandığını ve Unicode/tırnaklı argümanların korunduğunu doğrular. Testler geçici veri/profil klasörleri kullanır. Smoke testi gerçek repo verilerinin hash'lerini karşılaştırır. Performans raporu `verification/performance.json` dosyasına yazılır. `test:packages`, unpacked ve portable paketlerde eski job/ayar/arşiv biçimleriyle ilk açılışı ve yeniden açılışı da sınar; sonucu `verification/package-migration.json` dosyasına yazar. Bu fixture testi, gerçek kurulu 1.1.0 üzerinden installer yükseltmesi yerine geçmez.
 
-`test:installer`, açıkça etkinleştirilmiş geçici GitHub-hosted Windows makinesinde gerçek kullanıcı bazlı kurulum/kaldırmayı, özel klasör/kısayolları, yayımlanmış 1.1.0 → 1.2.0 veri geçişini ve yerel feed üzerinden gerçek güncellemeyi sınar. Güncel updater için sonraki patch sürümünde yalnızca teste ait installer oluşturur; public yayın yapmaz. Erişilemeyen feed/yanlış SHA512 ve portable ayrımı da kontrol edilir. Kullanıcı bilgisayarında çalışmayı reddeder. Sonuç `verification/installer.json` ve CI'daki `windows-verification-reports` artifact'inde tutulur; kapsam sınırları iyileştirme planındadır.
+`test:installer`, önceki geçici GitHub-hosted Windows denemelerinin test aracıdır; workflow kaldırıldığı için artık otomatik çalışmaz. Güvenlik koruması kullanıcı bilgisayarında gerçek kurulum/kaldırmayı reddetmeye devam eder. Gerçek installer/güncelleme testlerinin kalan kısmı ayrı, geçici bir Windows test ortamı hazırlanmasını bekler; kapsam ve önceki kanıtlar iyileştirme planındadır.
 
 ## Yerel paket hazırlama
 

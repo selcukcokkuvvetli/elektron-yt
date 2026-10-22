@@ -12,8 +12,9 @@ Bu dosya, ayrıntılı proje incelemesinde bulunan sorunların giderilmesi ve ye
 | Başlangıç incelemesi | Tamamlandı |
 | Düzeltmelerin uygulanması | Faz 00–09 yerel olarak tamamlandı; Faz 10 yerel paketleri hazır, manuel sürüm kontrolleri açık |
 | Sürüm numarasının değiştirilmesi | Tamamlandı: manifest ve lockfile `1.2.0` |
-| Yeni build / GitHub yayını | İlk commit/push, temiz commit build'i ve uzak Windows CI geçti; Actions paketleri mevcut. Public sürüm yayını yapılmadı |
-| Sıradaki adım | Installer ve gerçek güncelleme entegrasyonu devam ediyor: geçici GitHub-hosted Windows makinesinde kurulum/kaldırma, yayımlanmış 1.1.0 geçişi ve loopback feed; sonuçlar aşağıdaki installer kaydına işlenecek |
+| GitHub kullanımı | Kullanıcı kararıyla yalnızca kod ve sürüm geçmişi; Windows verification ve Installer candidate verification workflow dosyaları kaldırıldı. Yeni push/PR otomatik test, build veya yayın başlatmaz |
+| Yeni build / GitHub yayını | Önceki temiz commit build'i ve uzak Windows CI kanıtları tarihsel kayıt olarak korunur. Bundan sonraki test ve paketleme yerelde elle yapılır. Public sürüm yayını yapılmadı |
+| Sıradaki adım | Yerel test/paket kontrolleriyle devam et. Tam installer/güncelleme kabulü ayrı geçici Windows test ortamını bekliyor; CI denemeleri durduruldu ve eksik testler tamamlandı sayılmadı |
 
 **Sürüm kararı:** İndirme motoru, analiz yaşam döngüsü, depolama, bağımlılıklar ve dağıtım akışındaki değişiklikleri tek bir `1.2.0` sürümünde toplamak hedefleniyor. Mevcut kullanıcı verileriyle uyumluluk korunacak. Sürüm numarası yerel düzeltme testlerinden sonra `1.2.0` olarak artırıldı; `package.json` ve `package-lock.json` birlikte güncellendi. Hedef sürüm değişirse gerekçesi karar günlüğüne yazılacak.
 
@@ -382,6 +383,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 
 | Tarih | Faz | Yapılan iş | Kontrol / kanıt | Sonraki adım |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | Çalışma düzeni | Kullanıcının GitHub'ı yalnızca kod/sürüm takibi için kullanma kararı uygulandı; iki workflow kaldırıldı, README ve güncel durum yenilendi. | Workflow silmeleri ve doküman değişiklikleri `git diff --check` ile kontrol edildi. Son iki installer koşusu başarısız bitmişti; yeni CI denemesi başlatılmıyor. | Yerel kontroller; eksik installer kabulü için ayrı geçici Windows ortamı |
 | 2026-10-22 | Plan | İnceleme bulguları, fazlar, test matrisi ve hedef belgelendi. | Başlangıç commit'i: `269052febfa4729b958ddd12c9c17d7782137e2c`. İlk durumda README değişikliği ve bu yeni plan dosyası vardı. | Faz 00 |
 | 2026-10-22 | 00–04 | Yalıtım, gerçek ilerleme/timeout, asenkron analiz, iptal/dedupe/retry ve atomik depolama uygulandı. | Store, engine, legacy/archive fixture ve gerçek süreç regresyon testleri geçti. Kullanıcı veri dosyaları değişmedi. | Runtime/güvenlik |
 | 2026-10-22 | 05–06 | Node 24.22.1 / npm 11.19.1, Electron 45.0.0, builder 26.15.3 ve updater 6.8.9; IPC/CSP ve artımlı UI uygulandı. | Temiz `npm ci` geçti; tam ve production audit 0 açık. 5.000 iş: soğuk render ~4,9 ms, sıcak render ~0,8 ms; DOM 100, log 200 sınırında. | Binary/yayın |
@@ -401,6 +403,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 
 | Tarih | Karar | Gerekçe |
 | --- | --- | --- |
+| 2026-10-22 | GitHub yalnızca kod ve sürüm geçmişi için kullanılacak; iki Actions workflow dosyası kaldırıldı. | Kullanıcı, bildirim ayarını değiştirmek yerine GitHub üzerinde otomatik test/paketleme çalıştırılmamasını istedi. Yerel test komutları korunur; gerçek kurulum testinin kullanıcı bilgisayarını koruyan sınırı gevşetilmez. Önceki CI sonuçları tarihsel kanıttır. |
 | 2026-10-22 | Hedef sürüm `1.2.0`; gerçek bump Faz 10'da. | Birbiriyle ilişkili motor, güvenilirlik ve dağıtım değişiklikleri tek sürümde doğrulanacak. |
 | 2026-10-22 | Mimari ve JSON depolama korunacak. | Mevcut MVP'yi gereksiz teknoloji geçişi olmadan sağlamlaştırmak. |
 | 2026-10-22 | Yeni bağımlılık sürümleri Faz 05'te resmî kaynaklardan seçilecek. | Destek ve uyumluluk durumu uygulama tarihinde doğrulanmalı. |
@@ -436,7 +439,9 @@ Aşağıdaki tablo, commit öncesi ilk yerel adayın tarihsel kaydıdır; sonrak
 | `Elektron-YT-Portable-1.2.0.exe` | 145251695 | `bb11f5bd42d32082be94addcacd94c90d24ad3f0afbfc6f42e1fdb22a9c651e3` |
 | `Elektron-YT-Setup-1.2.0.exe` | 145474691 | `7a50992fe247d17792e1dbf72f41345fe744e6cd081dce6a09a7528029f770b7` |
 
-### Installer ve güncelleme entegrasyonu — devam ediyor
+### Installer ve güncelleme entegrasyonu — CI denemeleri durduruldu
+
+**Güncel karar (22 Ekim 2026):** Kullanıcı GitHub'ı yalnızca kod ve sürüm geçmişi için kullanmayı seçti. `.github/workflows/windows.yml` ve `.github/workflows/installer-candidate.yml` kaldırıldı. Aşağıdaki CI açıklamaları ve koşu numaraları önceki denemelerin kaydıdır; yeni koşu planlanmıyor. Son tam koşu `39776044605`, testler/audit/build/paket önkontrolünü geçti ancak kurulu runner testinde aktif aktarım timeout kontrolü başarısız oldu. Son aday koşusu `39776044740` da başarısız tamamlandı. Installer/güncelleme kabulünün tamamı doğrulanmış sayılmaz. Kalan gerçek kurulum testleri ayrı geçici Windows test ortamını bekler; mevcut koruma kaldırılarak kullanıcı makinesinde çalıştırılmaz.
 
 Komut: `npm run test:installer`. Yalnızca GitHub-hosted Windows CI ve `ELEKTRON_YT_DISPOSABLE_INSTALLER_TEST=1` ile çalışır. Yayımlanmış 1.1.0 installer'ı sabit SHA256 ile indirilir. Güncelleme feed'i yalnızca `127.0.0.1` üzerinde sunulur; GitHub Releases üzerinde değişiklik yapılmaz. Test, gerçek uygulamanın normal açılışını ve kapanışta otomatik NSIS kurulumunu kullanır; updater olaylarını taklit etmez. Güncel updater için sonraki patch sürümünde özel bir test paketi üretilir; bu paket public sürüm değildir ve gerçek manifest/lock sürümü değişmez.
 
@@ -446,10 +451,10 @@ Komut: `npm run test:installer`. Yalnızca GitHub-hosted Windows CI ve `ELEKTRON
 | Temiz kullanıcı bazlı kurulum, Unicode/boşluk içeren özel klasör, kayıt defteri ve kısayol hedefleri | Geçti: aday koşusu `39773599226`, ilk aşama. Kısa/uzun Windows yolları gerçek dosya kimliğiyle karşılaştırılıyor. |
 | Kurulu uygulamada renderer/IPC ve kurulu binary/gömülü Node ile MP4/MP3 runner | Geçti: aynı koşuda kurulu Electron 45 / Node 24.22.0 ile T01–T08 ve smoke. |
 | Kaldırmada kayıt defteri/kısayol temizliği; işler, ayarlar, iki arşiv biçimi ve indirmelerin korunması | Geçti: aynı koşuda normal açılış/kapanış ve gerçek NSIS kaldırma sonrası kayıt/indirme kontrolleri. |
-| Yayımlanmış gerçek 1.1.0 kurulumu → gerçek 1.2.0 güncellemesi ve veri uyumluluğu | CI sonucu bekleniyor. |
-| Yeni updater ile erişilemeyen feed ve yanlış SHA512 reddi | CI sonucu bekleniyor; hatalı paket kapanışta kurulamaz. |
-| Yeni updater ile özel sonraki patch paketini indirme, kapanışta kurma, sürüm/kısayol/veri doğrulama ve yeniden açılış | CI sonucu bekleniyor. |
-| Gerçek portable başlatıcıda ayrı veri ve otomatik güncellemenin kapalı olması | CI sonucu bekleniyor. |
+| Yayımlanmış gerçek 1.1.0 kurulumu → gerçek 1.2.0 güncellemesi ve veri uyumluluğu | Tamamlanmadı; CI denemeleri durduruldu, ayrı geçici Windows ortamı bekleniyor. |
+| Yeni updater ile erişilemeyen feed ve yanlış SHA512 reddi | Tamamlanmadı; ayrı geçici Windows ortamı bekleniyor. |
+| Yeni updater ile özel sonraki patch paketini indirme, kapanışta kurma, sürüm/kısayol/veri doğrulama ve yeniden açılış | Tamamlanmadı; ayrı geçici Windows ortamı bekleniyor. |
+| Gerçek portable başlatıcıda ayrı veri ve otomatik güncellemenin kapalı olması | Bu entegrasyon zincirinde tamamlanmadı; önceki yerel portable testleri ayrı kanıttır. |
 
 Makine tarafından okunabilir rapor `verification/installer.json` dosyasına yazılır ve CI'da `windows-verification-reports` artifact'i olarak başarısız koşularda da saklanır. İnteraktif wizard sayfaları/UAC, tüm kullanıcılar kurulumu, imzalı publisher doğrulaması, diferansiyel indirme ve gerçek public GitHub feed'inden sürüm yükseltmesi bu testin kapsamı dışındadır. Salt okunur portable konumu ayrıca açık kalır.
 
