@@ -4,7 +4,7 @@ const { build, Platform, Arch } = require('electron-builder');
 const asar = require('@electron/asar');
 
 // A private test successor, never a release asset or a change to the real version.
-module.exports = async function buildUpdateFixture(root, workspace, feedUrl) {
+module.exports = async function buildUpdateFixture(root, workspace, feedUrl, runtimeArchive) {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json')));
   const parts = pkg.version.split('.').map(Number);
   const version = [parts[0], parts[1], parts[2] + 1].join('.');
@@ -14,7 +14,7 @@ module.exports = async function buildUpdateFixture(root, workspace, feedUrl) {
   // Reuse the already packaged production dependency tree. A node_modules junction
   // confuses dependency collection and can omit updater dependencies in the fixture.
   const runtimeBasis = path.join(project, 'runtime-basis');
-  asar.extractAll(path.join(root, 'release', pkg.version, 'win-unpacked', 'resources', 'app.asar'), runtimeBasis);
+  asar.extractAll(runtimeArchive || path.join(root, 'release', pkg.version, 'win-unpacked', 'resources', 'app.asar'), runtimeBasis);
   fs.renameSync(path.join(runtimeBasis, 'node_modules'), path.join(project, 'node_modules'));
   fs.cpSync(path.join(root, 'app'), path.join(project, 'app'), { recursive: true,
     filter: source => ![path.join(root, 'app', 'bin'), path.join(root, 'app', 'licenses')].includes(source) });

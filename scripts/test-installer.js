@@ -57,6 +57,7 @@ async function main() {
   const report = { commit: gitState(root).commit, version: pkg.version, platform: os.release(),
     disposableRunner: true, legacyInstallerSha256: fixtures.legacyInstallerSha256,
     publicReleaseModified: false, steps: [], requests: [] };
+  report.packageCommit = JSON.parse(fs.readFileSync(path.join(output, 'build-info.json'))).commit;
   const children = new Set();
   const connections = new Set();
   const assets = new Map();
@@ -117,10 +118,12 @@ async function main() {
     const state = await snapshot();
     assert.strictEqual(state.registry.length, 1, JSON.stringify(state));
     assert.strictEqual(state.registry[0].DisplayVersion, version);
-    assert.ok(state.registry[0].UninstallString.toLowerCase().includes(installDir.toLowerCase()));
+    const uninstallPath = /^"([^"]+)"/.exec(state.registry[0].UninstallString);
+    assert.ok(uninstallPath, 'Quoted NSIS uninstaller path missing');
+    assert.strictEqual(fs.realpathSync.native(path.dirname(uninstallPath[1])).toLowerCase(), fs.realpathSync.native(installDir).toLowerCase());
     for (const link of [state.desktop, state.startMenu]) {
       assert.strictEqual(link.exists, true);
-      assert.strictEqual(path.resolve(link.target).toLowerCase(), executable.toLowerCase());
+      assert.strictEqual(fs.realpathSync.native(link.target).toLowerCase(), fs.realpathSync.native(executable).toLowerCase());
     }
     assert.strictEqual(installedVersion(installDir), version);
     report.registrations = report.registrations || [];
@@ -244,7 +247,7 @@ async function main() {
     let fixture;
     let fixtureMetadata;
     await step('Build private successor installer from current source (no tag or publication)', async () => {
-      fixture = await buildUpdateFixture(root, workspace.root, feedUrl);
+      fixture = await buildUpdateFixture(root, workspace.root, feedUrl, path.join(installDir, 'resources', 'app.asar'));
       report.syntheticUpdateTarget = fixture.version;
       fixtureMetadata = yaml.load(fs.readFileSync(path.join(fixture.output, 'latest.yml'), 'utf8'));
       addAssets(fixture.output, fixtureMetadata);
