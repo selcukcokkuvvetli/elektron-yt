@@ -11,5 +11,6 @@ async function main() {
     await run(process.execPath, [path.join(__dirname, 'test-instance.js')], { stdio: 'inherit', timeoutMs: 120000,
       env: { ...process.env, ELEKTRON_YT_SMOKE_EXE: path.join(root, 'release', version, file) } });
   }
+  await run(process.execPath, [path.join(__dirname, 'test-package-migration.js')], { stdio: 'inherit', timeoutMs: 240000 });
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

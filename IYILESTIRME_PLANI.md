@@ -12,8 +12,8 @@ Bu dosya, ayrıntılı proje incelemesinde bulunan sorunların giderilmesi ve ye
 | Başlangıç incelemesi | Tamamlandı |
 | Düzeltmelerin uygulanması | Faz 00–09 yerel olarak tamamlandı; Faz 10 yerel paketleri hazır, manuel sürüm kontrolleri açık |
 | Sürüm numarasının değiştirilmesi | Tamamlandı: manifest ve lockfile `1.2.0` |
-| Yeni build / GitHub yayını | Portable + NSIS 1.2.0 hazır ve yerel paket testleri geçti; GitHub yayını yapılmadı |
-| Sıradaki adım | Kullanıcı talebiyle commit/push, uzak Windows CI ve temiz commit üzerinden yeniden build; ardından temiz Windows/kurulu 1.1.0/installer güncelleme kontrolleri |
+| Yeni build / GitHub yayını | İlk commit/push, temiz commit build'i ve uzak Windows CI geçti; Actions paketleri mevcut. Public sürüm yayını yapılmadı |
+| Sıradaki adım | Paket migration regresyonunu kalıcı testlerle sürdür; temiz Windows installer kurulum/kaldırma, kurulu 1.1.0 geçişi, salt okunur portable konumu ve izole installer güncellemesini doğrula |
 
 **Sürüm kararı:** İndirme motoru, analiz yaşam döngüsü, depolama, bağımlılıklar ve dağıtım akışındaki değişiklikleri tek bir `1.2.0` sürümünde toplamak hedefleniyor. Mevcut kullanıcı verileriyle uyumluluk korunacak. Sürüm numarası yerel düzeltme testlerinden sonra `1.2.0` olarak artırıldı; `package.json` ve `package-lock.json` birlikte güncellendi. Hedef sürüm değişirse gerekçesi karar günlüğüne yazılacak.
 
@@ -305,11 +305,12 @@ Uygulama sırası tablodaki sıradır. Her faz kendi testleriyle tamamlanır; te
 - [ ] Temiz Windows ortamında portable açılış ve MP4/MP3 işlemlerini doğrula; ayrıca yazma izni olmayan taşınabilir konumu test et.
 - [ ] Installer kurulum, kısayol, klasör seçimi ve kaldırma sırasında kullanıcı verisinin korunmasını doğrula.
 - [x] `1.1.0` job/ayar ve iki arşiv biçimiyle migration fixture testlerini çalıştır; yeniden okuma ve retry davranışı doğrulandı.
+- [x] Legacy fixture'ları gerçek unpacked ve portable 1.2.0 paketlerinde açıp kapat; her hedefte ilk açılış ve yeniden açılışta üç iş, ayarlar ve iki arşiv biçimi korunsun. `scripts/test-package-migration.js`, `test:packages` ve CI kapsamındadır.
 - [ ] Gerçek kurulu 1.1.0 verileriyle paket/installer geçişini temiz Windows ortamında doğrula.
 - [ ] Installer güncellemesini izole test kanalı/feed veya test deposunda uçtan uca doğrula; portable otomatik güncelleme almasın.
 - [x] Kod imzalama mevcutsa sertifika ve yayıncı doğrulamasını yap; mevcut değilse paket durumunu ve etkisini sürüm kaydında açıkça belirt.
 - [x] Test edilen commit, araç/binary sürümleri ve paket hash'lerini sürüm kaydına yaz.
-- [ ] Değişiklikleri inceleyip commit/push yap; test edilen commit üzerinden yeniden paketle. Mevcut yerel adayın `dirty: true` olması public yayını bilerek engelliyor.
+- [x] Değişiklikleri inceleyip commit/push yap; test edilen commit üzerinden yeniden paketle. İlk temiz kaynak commit'i `7ec997d0b95741bece894922229bb4bfa4f709c9`; build ve dry-run `dirty: false`, `publishable: true` geçti. Bu teknik önkontrol manuel sürüm kabulü yerine geçmez.
 - [ ] Son manuel kontroller geçtikten sonra public yayın adımını ayrı yürüt.
 - [ ] Yayın yapılırsa public asset indirme, güncelleme metadata'sı ve sürüm bağlantısını doğrula; bu belgeye kaydet.
 
@@ -343,7 +344,7 @@ Uygulama sırası tablodaki sıradır. Her faz kendi testleriyle tamamlanır; te
 | T22 | Eksik asset / hatalı hash | GitHub mutasyonu yapılmaz | Sahte API | Geçti (yerel) |
 | T23 | Upload kesintisi / aynı sürümü yeniden yayınlama | Public sürüm korunur, taslak sürdürülebilir | Sahte API | Geçti (yerel) |
 | T24 | Temiz Windows portable ve installer | Açılış, indirme, yollar, kaldırma doğru | Paket üzerinde manuel/otomatik | Yerel unpacked/portable ve ikinci örnek geçti; temiz Windows/installer bekliyor |
-| T25 | `1.1.0` verisi → `1.2.0` | Geçmiş, ayar ve arşiv korunur | Paket + migration fixture | Fixture geçti; paket/kurulum geçişi bekliyor |
+| T25 | `1.1.0` verisi → `1.2.0` | Geçmiş, ayar ve arşiv korunur | Paket + migration fixture | Motor fixture ve gerçek unpacked/portable paketlerinde iki açılış geçti; gerçek kurulu 1.1.0 installer geçişi bekliyor |
 | T26 | Installer update / portable ayrımı | Test feed'inde güncelleme tamamlanır; portable ayrımı korunur | İzole güncelleme ortamı | Yönlendirme/olay birim testleri geçti; gerçek update feed bekliyor |
 
 Başlangıç incelemesindeki testler yeni sürüm matrisini otomatik tamamlamaz. Yeni sürümle gerçek YouTube videosu ve resmî tek öğeli test playlisti üzerinden MP4/MP3 indirme doğrulandı; gömülü Electron Node runtime'ıyla video/MP3 testi ayrıca geçti. Dış servis sonuçları deterministik yerel testlerden ayrı kaydedilir.
@@ -356,7 +357,7 @@ Başlangıç incelemesindeki testler yeni sürüm matrisini otomatik tamamlamaz.
 - [x] Playlist/dedupe/retry kuralları ve veri migration testleri geçiyor.
 - [x] Yeni runtime altında temiz `npm ci` ve ilgili yerel otomatik testler geçiyor.
 - [ ] Temiz Windows kurulum/kaldırma, gerçek veri geçişi ve uçtan uca installer güncellemesi tamam.
-- [ ] Uzak GitHub Actions koşusu ve public yayın için commit/push üzerinden yeniden build tamam.
+- [x] Uzak GitHub Actions koşusu ve public yayın için commit/push üzerinden yeniden build tamam. İlk koşu `39766663816`: bütün adımlar başarılı, paket artifact'i yüklendi. Public yayın ayrıca bekliyor.
 - [x] Güvenlik taraması sonuçları ve kalan bulguların değerlendirmesi kayıtlı.
 - [x] Portable/installer paketleri ve güncelleme metadata'sı aynı sürüm/commit ile tutarlı.
 - [x] Paket hash'leri, kaynak fingerprint'i, test kanıtları ve kullanıcı veri dosyalarının değişmediği hash karşılaştırması kayıtlı. Kullanıcı verisine müdahale gerekmedi.
@@ -389,6 +390,8 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 | 2026-10-22 | 02/10 | Hızlı iptalde Windows süreç ağacı yarışı giderildi. | C# süreç yardımcısı kendi kill-on-close Job Object'ine çocukları başlatmadan katılıyor. Ayrı başlatılmış torun süreçlerin iptalde ve normal bitişte kapandığı, Unicode/tırnaklı argümanlar ve 5 ardışık smoke geçişi doğrulandı. | Temiz kurulum + paket testleri |
 | 2026-10-22 | 10 | Son `npm ci` + `release:prepare -- --version 1.2.0` akışı tamamlandı. | Tüm yerel testler, native Job Object, iki paket için smoke/ikinci örnek, binary ve release hash kontrolleri geçti. Tam/production audit 0 bulgu; üç kullanıcı veri dosyası HEAD ile aynı. Paketler NotSigned. | Temiz Windows / kurulu veri geçişi / update feed / commit ve yayın |
 | 2026-10-22 | 10 | Kullanıcı commit/push ve devam talimatı verdi. | `main` ve `origin/main` başlangıç commit'inde eşit; kullanıcı veri dosyalarında değişiklik yok. Kaynak, test, lisans ve plan dosyaları commit kapsamına alınıyor; üretilen binary/paketler Git dışında. | Push, uzak CI ve temiz commit build'i |
+| 2026-10-22 | 10 | `7ec997d` commit'i `origin/main` üzerine pushlandı; yerel paketler temiz commit'ten yeniden üretildi. | `test:packages` ve `release:check` geçti: `dirty: false`, `publishable: true`. GitHub Actions `39766663816` kurulum, tüm testler, audit, build, gerçek paket testleri, dry-run ve artifact yüklemeyi başarıyla tamamladı. | Paket migration regresyonu |
+| 2026-10-22 | 10 | Eski kayıtların gerçek paketlerde migration/yeniden açılış kontrolü kalıcı regresyon testine eklendi. | Her hedef için ayrı legacy başlangıç verisi ve iki açılış: tamamlanmış iş/başlık/format korunur, yarım indirme iptale dönüşür, eski analiz hatası tanınır, ayarlar ve iki arşiv biçimi değişmez. Testler yalnızca geçici profili kullanır. | Güncel test commit'ini pushla; aynı CI/build/test akışını uygula; ardından manuel installer/update kontrolleri |
 
 ### Karar günlüğü
 
@@ -404,7 +407,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 
 ## 9. Son yerel doğrulama — 22 Ekim 2026
 
-Yerel aday **1.2.0** hazırdır. Public yayın yapılmadı; temiz Windows/installer kontrolleri ve uzak CI koşusu tamamlandı olarak işaretlenmedi.
+Yerel aday **1.2.0** hazırdır. İlk temiz commit build'i ve uzak Windows CI geçti. Public yayın yapılmadı; manuel installer kurulumu/kaldırma ve gerçek uçtan uca güncelleme tamamlandı olarak işaretlenmedi.
 
 | Kontrol | Sonuç |
 | --- | --- |
@@ -415,9 +418,14 @@ Yerel aday **1.2.0** hazırdır. Public yayın yapılmadı; temiz Windows/instal
 | 5.000 iş UI ölçümü | Soğuk render ~3.7 ms; sıcak render ~1.0 ms; DOM 100, log 200 sınırında. |
 | Kullanıcı verileri | `jobs.json`, `settings.json`, `archive.txt` başlangıç HEAD içerikleriyle aynı. |
 | İmzalama | Her iki paket `NotSigned`; sertifika kullanılmadı. |
-| Public yayın | Yapılmadı. Kaynak değişiklikleri commit/push edilmediği için dry-run `publishable: false`. |
+| Commit / push | İlk kaynak commit'i `7ec997d0b95741bece894922229bb4bfa4f709c9`, `origin/main` üzerine gönderildi. |
+| Uzak Windows CI | [39766663816 — başarılı](https://github.com/selcukcokkuvvetli/elektron-yt/actions/runs/39766663816); tüm adımlar ve paket artifact yüklemesi geçti. Sonraki commit koşuları [Actions](https://github.com/selcukcokkuvvetli/elektron-yt/actions) üzerinden izlenir. |
+| Paket migration | Gerçek unpacked/portable uygulamada ayrı legacy fixture'larla ilk açılış ve yeniden açılış; rapor `verification/package-migration.json`. Kurulu 1.1.0 installer geçişi ayrıca bekliyor. |
+| Public yayın | Yapılmadı. İlk temiz commit dry-run `dirty: false`, `publishable: true`; manuel kabul ve açık yayın adımı bekliyor. |
 
-**Yerel çıktılar:** `release/1.2.0/`. Kaynak/araç/binary/helper bilgileri `build-info.json`, toplu sonuçlar `verification/final.json`, performans `verification/performance.json` içindedir. Bu üretilen klasörler Git'e eklenmez.
+**Yerel çıktılar:** `release/1.2.0/`. Güncel paketlerin kesin commit'i, kaynak fingerprint'i, araç/binary/helper bilgileri ve SHA256'ları bu dizindeki `build-info.json` içinde tutulur. Toplu sonuçlar `verification/final.json`, performans `verification/performance.json` içindedir. Bu üretilen klasörler Git'e eklenmez. Her kaynak/test commit'i sonrası yeniden build ve paket önkontrolü çalıştırılır; güncel dosyalar için manifest esas alınır.
+
+Aşağıdaki tablo, commit öncesi ilk yerel adayın tarihsel kaydıdır; sonraki build'lerin hash'i olarak kullanılmaz:
 
 | Paket | Bayt | SHA256 |
 | --- | --- | --- |
