@@ -12,6 +12,7 @@ const { downloadFile } = require('./bootstrap-binaries');
 const { createWorkspace, killTree } = require('./test-support');
 const buildUpdateFixture = require('./build-update-fixture');
 const fixtures = require('./installer-fixtures.json');
+const { debuggerPort, debuggerArgs, closeRenderer } = require('./electron-test-control');
 
 async function waitUntil(predicate, message, timeoutMs = 90000) {
   const end = Date.now() + timeoutMs;
@@ -158,12 +159,13 @@ async function main() {
     fs.writeFileSync(path.join(installDir, 'resources', 'app-update.yml'), yaml.dump({ provider: 'generic', url: feedUrl,
       useMultipleRangeRequest: false, updaterCacheDirName: 'elektron-yt-ci-' + path.basename(workspace.root) + '-' + (++feedCounter) }));
   };
-  const startApp = (file = executable, targetData = dataDir) => {
+  const startApp = async (file = executable, targetData = dataDir) => {
     const env = { ...process.env };
     for (const key of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_SMOKE_TEST', 'ELEKTRON_YT_TEST_ROOT', 'ELEKTRON_YT_LOCK_PROBE', 'PORTABLE_EXECUTABLE_DIR']) delete env[key];
     const offset = logs(targetData).length;
-    const child = spawn(file, [], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    const instance = { child, stderr: '', lines: () => logs(targetData).slice(offset) };
+    const port = await debuggerPort();
+    const child = spawn(file, debuggerArgs(port), { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const instance = { child, port, stderr: '', lines: () => logs(targetData).slice(offset) };
     child.stdout.on('data', chunk => { instance.stderr = (instance.stderr + chunk).slice(-65536); });
     child.stderr.on('data', chunk => { instance.stderr = (instance.stderr + chunk).slice(-65536); });
     instance.closed = new Promise(resolve => { child.once('error', error => { instance.error = error; resolve(-1); }); child.once('close', resolve); });
@@ -176,7 +178,7 @@ async function main() {
     return expression.test(instance.lines());
   }, 'application log ' + expression, 120000);
   const closeApp = async instance => {
-    await ps(['-Mode', 'close', '-RootPid', String(instance.child.pid)]);
+    await closeRenderer(instance.port);
     await waitUntil(() => instance.child.exitCode !== null, 'graceful application shutdown', 30000);
     assert.strictEqual(await instance.closed, 0, instance.stderr);
     activeApp = null;
@@ -216,7 +218,7 @@ async function main() {
     await step('Installed normal launch and uninstall preserve real user-data location and downloads', async () => {
       seed(); preserved = remember();
       metadata = currentMetadata; configureFeed();
-      const instance = startApp();
+      const instance = await startApp();
       await waitLog(instance, /Auto update: yeni surum bulunamadi/);
       await closeApp(instance); verifyData();
       await uninstall(); verifyData();
@@ -227,13 +229,13 @@ async function main() {
       await install(legacyInstaller, fixtures.legacyVersion);
       seed(); preserved = remember();
       metadata = { ...currentMetadata, version: fixtures.legacyVersion }; configureFeed();
-      const instance = startApp();
+      const instance = await startApp();
       await waitLog(instance, /Auto update: yeni surum bulunamadi/);
       await closeApp(instance); verifyData();
     });
     const applyUpdate = async targetVersion => {
       configureFeed();
-      const instance = startApp();
+      const instance = await startApp();
       await waitLog(instance, new RegExp('Auto update hazir: ' + targetVersion.replace(/\./g, '\\.')));
       await closeApp(instance);
       await waitUntil(() => installedVersion(installDir) === targetVersion, 'installer update applied ' + targetVersion, 180000);
@@ -254,7 +256,7 @@ async function main() {
     });
     await step('Current updater rejects a missing feed without changing installation or data', async () => {
       unavailable = true; configureFeed();
-      const instance = startApp();
+      const instance = await startApp();
       await waitLog(instance, /Auto update (hatasi|kontrol hatasi):/);
       await closeApp(instance); unavailable = false;
       await verifyRegistration(pkg.version); verifyData();
@@ -264,7 +266,7 @@ async function main() {
       const invalid = (metadata.sha512[0] === 'A' ? 'B' : 'A') + metadata.sha512.slice(1);
       metadata.sha512 = invalid; metadata.files[0].sha512 = invalid;
       configureFeed();
-      const instance = startApp();
+      const instance = await startApp();
       await waitLog(instance, /(?:checksum|sha512).*?(?:mismatch|uyus)|checksum mismatch/i);
       await closeApp(instance);
       await verifyRegistration(pkg.version); verifyData();
@@ -273,7 +275,7 @@ async function main() {
       metadata = fixtureMetadata;
       await applyUpdate(fixture.version);
       configureFeed();
-      const instance = startApp();
+      const instance = await startApp();
       await waitLog(instance, /Auto update: yeni surum bulunamadi/);
       await closeApp(instance); verifyData();
     });
@@ -285,7 +287,7 @@ async function main() {
       fs.mkdirSync(dir);
       const file = path.join(dir, 'portable.exe');
       fs.copyFileSync(path.join(output, 'Elektron-YT-Portable-' + pkg.version + '.exe'), file);
-      const instance = startApp(file, path.join(dir, 'data'));
+      const instance = await startApp(file, path.join(dir, 'data'));
       await waitLog(instance, /Portable build auto update almaz/);
       await closeApp(instance); verifyData();
     });

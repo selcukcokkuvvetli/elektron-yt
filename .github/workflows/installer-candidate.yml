@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/test-installer.js
       - scripts/installer-probe.ps1
+      - scripts/electron-test-control.js
       - scripts/build-update-fixture.js
       - scripts/installer-fixtures.json
       - .github/workflows/installer-candidate.yml

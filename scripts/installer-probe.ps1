@@ -1,29 +1,8 @@
 param(
-  [ValidateSet('snapshot', 'close')][string]$Mode = 'snapshot',
-  [int]$RootPid = 0
+  [ValidateSet('snapshot')][string]$Mode = 'snapshot'
 )
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-if ($Mode -eq 'close') {
-  if ($RootPid -le 0) { throw 'A launched application PID is required.' }
-  for ($attempt = 0; $attempt -lt 100; $attempt++) {
-    $processes = @(Get-CimInstance Win32_Process)
-    $ids = [System.Collections.Generic.HashSet[int]]::new()
-    [void]$ids.Add($RootPid)
-    do {
-      $added = $false
-      foreach ($item in $processes) {
-        if ($ids.Contains([int]$item.ParentProcessId) -and $ids.Add([int]$item.ProcessId)) { $added = $true }
-      }
-    } while ($added)
-    foreach ($candidate in $ids) {
-      $appProcess = Get-Process -Id $candidate -ErrorAction SilentlyContinue
-      if ($appProcess -and $appProcess.MainWindowHandle -ne 0 -and $appProcess.CloseMainWindow()) { exit 0 }
-    }
-    Start-Sleep -Milliseconds 100
-  }
-  throw 'No application window accepted a graceful close.'
-}
 $entries = @(Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
   Where-Object { $_.DisplayName -eq 'Elektron YT' -or $_.DisplayName -match '^Elektron YT [0-9]+\.' } |
   Select-Object DisplayName, DisplayVersion, UninstallString, PSChildName)
