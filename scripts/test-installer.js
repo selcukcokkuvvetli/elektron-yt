@@ -115,7 +115,7 @@ async function main() {
   };
   const verifyRegistration = async version => {
     const state = await snapshot();
-    assert.strictEqual(state.registry.length, 1);
+    assert.strictEqual(state.registry.length, 1, JSON.stringify(state));
     assert.strictEqual(state.registry[0].DisplayVersion, version);
     assert.ok(state.registry[0].UninstallString.toLowerCase().includes(installDir.toLowerCase()));
     for (const link of [state.desktop, state.startMenu]) {
@@ -123,6 +123,8 @@ async function main() {
       assert.strictEqual(path.resolve(link.target).toLowerCase(), executable.toLowerCase());
     }
     assert.strictEqual(installedVersion(installDir), version);
+    report.registrations = report.registrations || [];
+    report.registrations.push({ version, ...state });
   };
   const install = async (file, version) => {
     // NSIS requires an unquoted /D value at the end of the raw command line.

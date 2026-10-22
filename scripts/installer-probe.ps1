@@ -25,7 +25,7 @@ if ($Mode -eq 'close') {
   throw 'No application window accepted a graceful close.'
 }
 $entries = @(Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
-  Where-Object { $_.DisplayName -eq 'Elektron YT' } |
+  Where-Object { $_.DisplayName -eq 'Elektron YT' -or $_.DisplayName -match '^Elektron YT [0-9]+\.' } |
   Select-Object DisplayName, DisplayVersion, UninstallString, PSChildName)
 $shell = New-Object -ComObject WScript.Shell
 function Read-Shortcut([string]$Path) {
