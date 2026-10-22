@@ -2,6 +2,7 @@
 <html lang="tr">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Elektron YT</title>
     <link rel="stylesheet" href="./styles.css" />
@@ -52,8 +53,9 @@
           </div>
           <textarea
             id="urlInput"
-            placeholder="Her satira bir YouTube linki gelecek sekilde yapistirin"
+            placeholder="Her satira bir YouTube linki gelecek sekilde yapistirin" aria-label="Indirilecek linkler"
           ></textarea>
+          <p id="storageWarning" class="error" role="alert" hidden></p>
           <p class="hint">Bos satirlar ve tekrar eden linkler otomatik temizlenir.</p>
           <div class="actions">
             <button id="startButton" class="primary">Baslat</button>
@@ -96,12 +98,17 @@
               </tbody>
             </table>
           </div>
+          <div class="pagination">
+            <button id="previousPage" class="ghost">Onceki</button>
+            <span id="pageInfo"></span>
+            <button id="nextPage" class="ghost">Sonraki</button>
+          </div>
         </section>
 
         <section class="panel log-panel">
           <div class="panel-head">
             <h2>Durum ve Log</h2>
-            <span id="lastMessage">Hazir</span>
+            <span id="lastMessage" role="status" aria-live="polite">Hazir</span>
           </div>
           <pre id="logBox">Uygulama yukleniyor...</pre>
         </section>

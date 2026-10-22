@@ -2,16 +2,22 @@ const fs = require('fs');
 const path = require('path');
 
 function resolveAppPaths(electronApp) {
+  if (process.env.ELECTRON_SMOKE_TEST === '1' && (!process.env.ELEKTRON_YT_TEST_ROOT
+    || !path.isAbsolute(process.env.ELEKTRON_YT_TEST_ROOT))) {
+    throw new Error('Smoke testi mutlak bir ELEKTRON_YT_TEST_ROOT gerektirir; kullanici verisi kullanilamaz.');
+  }
   const runtimeDir = electronApp.isPackaged
     ? path.dirname(process.execPath)
     : path.resolve(__dirname, '..', '..');
   const portableDataDir = process.env.PORTABLE_EXECUTABLE_DIR
     ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data')
     : null;
-  const userDataDir = electronApp.isPackaged
+  const testRoot = process.env.ELECTRON_SMOKE_TEST === '1' && process.env.ELEKTRON_YT_TEST_ROOT
+    ? path.resolve(process.env.ELEKTRON_YT_TEST_ROOT) : null;
+  const userDataDir = testRoot ? path.join(testRoot, 'data') : electronApp.isPackaged
     ? (portableDataDir || electronApp.getPath('userData'))
     : path.join(runtimeDir, 'data');
-  const downloadsDir = electronApp.isPackaged
+  const downloadsDir = testRoot ? path.join(testRoot, 'downloads') : electronApp.isPackaged
     ? (portableDataDir ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'downloads') : path.join(userDataDir, 'downloads'))
     : path.join(runtimeDir, 'downloads');
 

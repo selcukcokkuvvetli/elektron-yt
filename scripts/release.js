@@ -1,43 +1,19 @@
-const { spawnSync } = require('child_process');
-const fs = require('fs');
 const path = require('path');
-
-const rootDir = path.resolve(__dirname, '..');
-function run(command, args) {
-  const result = spawnSync(command, args, {
-    cwd: rootDir,
-    stdio: 'inherit',
-    shell: process.platform === 'win32'
-  });
-
-  if (result.status !== 0) {
-    process.exit(result.status || 1);
+const { assertVersion, packageInfo } = require('./build-utils');
+const { run } = require('./file-utils');
+async function main() {
+  const root = path.resolve(__dirname, '..');
+  const index = process.argv.indexOf('--version');
+  if (index >= 0) {
+    const version = assertVersion(process.argv[index + 1]);
+    const npm = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+    if (version !== packageInfo(root).version) {
+      await run(process.execPath, [npm, 'version', version, '--no-git-tag-version'], { cwd: root, stdio: 'inherit' });
+    }
+  }
+  for (const [script, args] of [['test-all.js', ['--binaries']], ['build.js', ['--target', 'all']],
+    ['test-packages.js', []], ['publish-github-release.js', ['--dry-run']]]) {
+    await run(process.execPath, [path.join(__dirname, script), ...args], { cwd: root, stdio: 'inherit' });
   }
 }
-
-function parseVersionArg() {
-  const versionIndex = process.argv.indexOf('--version');
-  if (versionIndex >= 0 && process.argv[versionIndex + 1]) {
-    return process.argv[versionIndex + 1];
-  }
-
-  return null;
-}
-
-function getCurrentVersion() {
-  return JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')).version;
-}
-
-function main() {
-  const requestedVersion = parseVersionArg();
-  if (requestedVersion && requestedVersion !== getCurrentVersion()) {
-    run('npm', ['version', requestedVersion, '--no-git-tag-version']);
-  }
-
-  run('node', ['scripts/generate-icon.js']);
-  run('npm', ['run', 'bootstrap:binaries']);
-  run('npx', ['electron-builder', '--win', 'portable', 'nsis', '--publish', 'never']);
-  run('node', ['scripts/publish-github-release.js']);
-}
-
-main();
+main().catch(error => { console.error(error.message); process.exitCode = 1; });

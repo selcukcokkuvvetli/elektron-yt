@@ -1,0 +1,34 @@
+name: Windows verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run bootstrap:binaries
+      - run: npm run test:all
+      - run: npm audit --audit-level=moderate
+      - run: npm run build:release
+      - run: npm run test:packages
+      - run: npm run release:check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: |
+            release/*/*.exe
+            release/*/*.blockmap
+            release/*/latest.yml
+            release/*/build-info.json
+          if-no-files-found: error

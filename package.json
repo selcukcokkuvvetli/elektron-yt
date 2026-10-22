@@ -1,6 +1,6 @@
 {
   "name": "elektron-yt",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Portable and installer-ready Electron YouTube bulk downloader with MP3 support",
   "main": "app/main/main.js",
   "author": "Codex",
@@ -17,35 +17,62 @@
     "test:stores": "node scripts/test-stores.js",
     "test:logic": "node scripts/test-logic.js",
     "test:smoke": "node scripts/smoke-electron.js",
-    "build:portable": "npm run build:assets && electron-builder --win portable",
-    "build:installer": "npm run build:assets && electron-builder --win nsis",
-    "build:release": "npm run build:assets && electron-builder --win portable nsis",
-    "release:prod": "node scripts/release.js"
+    "build:portable": "node scripts/build.js --target portable",
+    "build:installer": "node scripts/build.js --target nsis",
+    "build:release": "node scripts/build.js --target all",
+    "release:prod": "node scripts/publish-github-release.js --publish",
+    "test:engine": "node scripts/test-engine.js",
+    "test:runner": "node scripts/test-runner.js",
+    "test": "node scripts/test-all.js",
+    "postinstall": "install-electron && node scripts/build-process-host.js",
+    "test:instance": "node scripts/test-instance.js",
+    "test:security": "node scripts/test-security.js",
+    "test:performance": "node scripts/test-performance.js",
+    "release:prepare": "node scripts/release.js",
+    "release:check": "node scripts/publish-github-release.js --dry-run",
+    "test:release": "node scripts/test-release.js",
+    "test:all": "node scripts/test-all.js --binaries",
+    "check:binaries": "node scripts/bootstrap-binaries.js --check",
+    "test:youtube": "node scripts/test-youtube.js",
+    "test:packages": "node scripts/test-packages.js",
+    "build:process-host": "node scripts/build-process-host.js"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "6.8.9"
   },
   "devDependencies": {
-    "electron": "23.3.13",
-    "electron-builder": "23.6.0",
-    "png-to-ico": "^2.1.8",
-    "pngjs": "^6.0.0"
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3",
+    "pngjs": "7.0.0",
+    "js-yaml": "4.3.2"
   },
   "build": {
     "appId": "com.elektron.yt",
     "productName": "Elektron YT",
     "directories": {
-      "output": "release",
+      "output": "release/${version}",
       "buildResources": "build"
     },
     "files": [
       "app/**/*",
+      "!app/bin/**/*",
+      "!app/licenses/**/*",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "app/bin",
         "to": "bin",
+        "filter": [
+          "yt-dlp.exe",
+          "ffmpeg.exe",
+          "process-host.exe",
+          "README.txt"
+        ]
+      },
+      {
+        "from": "app/licenses",
+        "to": "licenses",
         "filter": [
           "**/*"
         ]
@@ -73,10 +100,15 @@
           ]
         }
       ],
-      "executableName": "ElektronYT"
+      "executableName": "ElektronYT",
+      "signExts": [
+        "!yt-dlp.exe",
+        "!ffmpeg.exe"
+      ]
     },
     "portable": {
-      "artifactName": "Elektron-YT-Portable-${version}.${ext}"
+      "artifactName": "Elektron-YT-Portable-${version}.${ext}",
+      "unpackDirName": true
     },
     "nsis": {
       "artifactName": "Elektron-YT-Setup-${version}.${ext}",
@@ -87,5 +119,16 @@
       "shortcutName": "Elektron YT",
       "deleteAppDataOnUninstall": false
     }
+  },
+  "engines": {
+    "node": ">=24.22.1 <25",
+    "npm": ">=11.19.1 <12"
+  },
+  "packageManager": "npm@11.19.1",
+  "overrides": {
+    "global-agent": "4.1.3"
+  },
+  "allowScripts": {
+    "electron-winstaller": false
   }
 }

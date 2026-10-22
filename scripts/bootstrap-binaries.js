@@ -1,106 +1,76 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
+const { hashFile, contained, run } = require('./file-utils');
+const manifest = require('../app/binaries.json');
+const appDir = path.resolve(__dirname, '..', 'app');
 
-const rootDir = path.resolve(__dirname, '..');
-const binDir = path.join(rootDir, 'app', 'bin');
-
-function ensureDir(target) {
-  fs.mkdirSync(target, { recursive: true });
+async function verifyEntries(root = appDir, downloads = manifest.downloads) {
+  const verified = [];
+  for (const download of downloads) for (const entry of download.entries) {
+    const file = contained(root, entry.to);
+    if (!fs.existsSync(file)) throw new Error('Binary/license missing: ' + entry.to + '. Run npm run bootstrap:binaries.');
+    if (await hashFile(file) !== entry.sha256) throw new Error('SHA256 mismatch: ' + entry.to);
+    if (entry.versionArgs) {
+      const output = await run(file, entry.versionArgs, { timeoutMs: 15000 });
+      if (!output.includes(entry.versionText)) throw new Error('Version mismatch: ' + entry.to);
+      verified.push({ file: entry.to, version: download.version, sha256: entry.sha256 });
+    }
+  }
+  return verified;
 }
 
-function runPowerShell(command) {
-  return spawnSync('powershell', [
-    '-NoProfile',
-    '-Command',
-    command
-  ], {
-    stdio: 'inherit'
-  });
+async function downloadFile(url, destination, expected) {
+  if (new URL(url).protocol !== 'https:') throw new Error('HTTPS required for binary download');
+  const response = await fetch(url, { signal: AbortSignal.timeout(180000) });
+  if (!response.ok) throw new Error('Binary download failed: HTTP ' + response.status);
+  await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(destination, { flags: 'wx' }));
+  if (await hashFile(destination) !== expected) throw new Error('Downloaded checksum mismatch');
 }
 
-function findFileRecursive(baseDir, filename) {
-  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
-
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
-    const candidate = path.join(baseDir, entry.name);
-    if (entry.isDirectory()) {
-      const found = findFileRecursive(candidate, filename);
-      if (found) {
-        return found;
+async function main() {
+  if (process.argv.includes('--check')) { console.log(JSON.stringify(await verifyEntries(), null, 2)); return; }
+  require('./build-process-host')();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'elektron-yt-bootstrap-'));
+  const quote = value => "'" + value.replace(/'/g, "''") + "'";
+  const replacements = [];
+  try {
+    for (let index = 0; index < manifest.downloads.length; index++) {
+      const download = manifest.downloads[index];
+      try {
+        if (!process.argv.includes('--force')) { await verifyEntries(appDir, [download]); continue; }
+      } catch (_) {}
+      const archive = contained(root, 'download-' + index + (download.archive ? '.zip' : '.bin'));
+      console.log('Preparing ' + download.id + ' ' + download.version);
+      await downloadFile(download.url, archive, download.sha256);
+      let extracted;
+      if (download.archive) {
+        extracted = contained(root, 'extract-' + index);
+        await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+          'Expand-Archive -LiteralPath ' + quote(archive) + ' -DestinationPath ' + quote(extracted)], { timeoutMs: 180000 });
       }
-    } else if (entry.name.toLowerCase() === filename.toLowerCase()) {
-      return candidate;
+      for (const entry of download.entries) {
+        const source = extracted ? contained(extracted, entry.from) : archive;
+        if (await hashFile(source) !== entry.sha256) throw new Error('Extracted checksum mismatch: ' + entry.to);
+        replacements.push({ source, destination: contained(appDir, entry.to) });
+      }
     }
+    // Every downloaded artifact has been verified before replacing any installed file.
+    for (const { source, destination } of replacements) {
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      const temporary = destination + '.tmp-' + process.pid;
+      try {
+        fs.copyFileSync(source, temporary);
+        fs.renameSync(temporary, destination);
+      } finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
+    }
+    console.log(JSON.stringify(await verifyEntries(), null, 2));
+  } finally {
+    if (path.dirname(root) !== path.resolve(os.tmpdir()) || !path.basename(root).startsWith('elektron-yt-bootstrap-')) throw new Error('Unsafe cleanup');
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5 });
   }
-
-  return null;
 }
-
-function main() {
-  ensureDir(binDir);
-
-  const force = process.argv.indexOf('--force') >= 0;
-  const ytDlpPath = path.join(binDir, 'yt-dlp.exe');
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'elektron-yt-'));
-  const ytDlpTempPath = path.join(tempDir, 'download.bin');
-  const ffmpegPath = path.join(binDir, 'ffmpeg.exe');
-  const ffmpegZip = path.join(tempDir, 'ffmpeg.zip');
-  const extractDir = path.join(tempDir, 'ffmpeg');
-
-  let result = { status: 0 };
-
-  if (!fs.existsSync(ytDlpPath) || force) {
-    console.log('Downloading yt-dlp.exe...');
-    result = runPowerShell(
-      'Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "' + ytDlpTempPath + '"'
-    );
-
-    if (result.status !== 0) {
-      throw new Error('yt-dlp indirilemedi.');
-    }
-
-    fs.copyFileSync(ytDlpTempPath, ytDlpPath);
-  }
-
-  if (!fs.existsSync(ffmpegPath) || force) {
-    console.log('Downloading ffmpeg bundle...');
-    result = runPowerShell(
-      'Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "' + ffmpegZip + '"'
-    );
-
-    if (result.status !== 0) {
-      throw new Error('ffmpeg arsivi indirilemedi.');
-    }
-
-    ensureDir(extractDir);
-    result = runPowerShell(
-      'Expand-Archive -LiteralPath "' + ffmpegZip + '" -DestinationPath "' + extractDir + '" -Force'
-    );
-
-    if (result.status !== 0) {
-      throw new Error('ffmpeg arsivi acilamadi.');
-    }
-
-    const locatedFfmpeg = findFileRecursive(extractDir, 'ffmpeg.exe');
-
-    if (!locatedFfmpeg) {
-      throw new Error('ffmpeg.exe arsiv icinde bulunamadi.');
-    }
-
-    fs.copyFileSync(locatedFfmpeg, ffmpegPath);
-  }
-
-  console.log('Binary setup complete:');
-  console.log(' - ' + ytDlpPath);
-  console.log(' - ' + ffmpegPath);
-}
-
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exit(1);
-}
+if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+module.exports = { verifyEntries, downloadFile };

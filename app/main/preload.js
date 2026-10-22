@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld('appApi', {
   onSnapshot: function onSnapshot(callback) {
     return subscribe('jobs:snapshot', callback);
   },
+  onDelta: function onDelta(callback) {
+    return subscribe('jobs:delta', callback);
+  },
   onLog: function onLog(callback) {
     return subscribe('jobs:log', callback);
   }

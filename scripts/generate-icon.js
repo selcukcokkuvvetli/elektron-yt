@@ -1,7 +1,25 @@
 const fs = require('fs');
 const path = require('path');
 const { PNG } = require('pngjs');
-const pngToIco = require('png-to-ico');
+function pngToIco(files) {
+  const images = files.map(file => fs.readFileSync(file));
+  const header = Buffer.alloc(6 + 16 * images.length);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(images.length, 4);
+  let offset = header.length;
+  images.forEach((data, index) => {
+    const image = PNG.sync.read(data);
+    const entry = 6 + index * 16;
+    header[entry] = image.width === 256 ? 0 : image.width;
+    header[entry + 1] = image.height === 256 ? 0 : image.height;
+    header.writeUInt16LE(1, entry + 4);
+    header.writeUInt16LE(32, entry + 6);
+    header.writeUInt32LE(data.length, entry + 8);
+    header.writeUInt32LE(offset, entry + 12);
+    offset += data.length;
+  });
+  return Buffer.concat([header, ...images]);
+}
 
 const rootDir = path.resolve(__dirname, '..');
 const buildDir = path.join(rootDir, 'build');
@@ -13,21 +31,9 @@ function ensureDir(target) {
 }
 
 function removeDir(target) {
-  if (!fs.existsSync(target)) {
-    return;
-  }
-
-  fs.readdirSync(target).forEach(function each(entry) {
-    const fullPath = path.join(target, entry);
-    const stat = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      removeDir(fullPath);
-    } else {
-      fs.unlinkSync(fullPath);
-    }
-  });
-
-  fs.rmdirSync(target);
+  const resolved = path.resolve(target);
+  if (resolved !== path.join(buildDir, '.icon-temp')) throw new Error('Unsafe icon cleanup path');
+  fs.rmSync(resolved, { recursive: true, force: true });
 }
 
 function clamp(value, min, max) {

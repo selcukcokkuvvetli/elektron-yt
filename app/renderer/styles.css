@@ -390,3 +390,7 @@ tbody tr:hover {
     flex-direction: column;
   }
 }
+
+.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 16px; }
+button:disabled { opacity: 0.45; cursor: default; transform: none; }
+button:focus-visible, textarea:focus-visible, .format-toggle input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 3px; }

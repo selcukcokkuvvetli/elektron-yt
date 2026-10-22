@@ -1,313 +1,202 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { spawn, spawnSync } = require('child_process');
+const { killProcessTree, cancelledError, spawnManaged } = require('./process-utils');
+const { validateUrl, canonicalUrl } = require('./urls');
 
-function parsePercent(value) {
-  const numeric = String(value || '')
-    .replace('%', '')
-    .replace(',', '.')
-    .trim();
-  const parsed = Number(numeric);
-  return Number.isFinite(parsed) ? parsed : 0;
+function numeric(value) {
+  const text = String(value == null ? '' : value).replace('%', '').replace(',', '.').trim();
+  return text && text !== 'NA' && Number.isFinite(Number(text)) ? Number(text) : null;
 }
 
-function killProcessTree(pid) {
-  if (!pid) {
-    return;
+function resolvedUrl(entry, fallback) {
+  for (const candidate of [entry && entry.webpage_url, entry && entry.original_url, entry && entry.url]) {
+    if (typeof candidate === 'string' && /^https?:\/\//i.test(candidate)) return canonicalUrl(candidate);
   }
-
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], {
-      windowsHide: true,
-      stdio: 'ignore'
-    });
-    return;
-  }
-
-  try {
-    process.kill(-pid, 'SIGKILL');
-  } catch (error) {
-    try {
-      process.kill(pid, 'SIGKILL');
-    } catch (ignored) {}
-  }
-}
-
-function normalizeResolvedUrl(entry, fallbackUrl) {
-  const candidates = [
-    entry && entry.webpage_url,
-    entry && entry.original_url,
-    entry && entry.url
-  ];
-
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    if (candidate && /^https?:\/\//i.test(candidate)) {
-      return candidate;
-    }
-  }
-
-  if (entry && entry.id) {
-    return 'https://www.youtube.com/watch?v=' + entry.id;
-  }
-
-  return fallbackUrl || '';
+  if (entry && entry.id && /^[\w-]+$/.test(entry.id)) return 'https://www.youtube.com/watch?v=' + entry.id;
+  return fallback || '';
 }
 
 class YtDlpRunner {
   constructor(appPaths, logger) {
     this.appPaths = appPaths;
-    this.logger = typeof logger === 'function' ? logger : function noop() {};
+    this.logger = typeof logger === 'function' ? logger : () => {};
   }
 
   ensureYtDlpExists() {
-    const ytdlpPath = path.join(this.appPaths.binDir, 'yt-dlp.exe');
-    if (!fs.existsSync(ytdlpPath)) {
-      throw new Error('yt-dlp.exe bulunamadi. app/bin klasorunu kontrol edin.');
-    }
-
-    return ytdlpPath;
+    const target = path.join(this.appPaths.binDir, 'yt-dlp.exe');
+    if (!fs.existsSync(target)) throw new Error('yt-dlp.exe bulunamadi. Binary kurulumunu kontrol edin.');
+    return target;
   }
 
   ensureFfmpegExists() {
-    const ffmpegPath = path.join(this.appPaths.binDir, 'ffmpeg.exe');
-    if (!fs.existsSync(ffmpegPath)) {
-      throw new Error('ffmpeg.exe bulunamadi. app/bin klasorunu kontrol edin.');
+    if (!fs.existsSync(path.join(this.appPaths.binDir, 'ffmpeg.exe'))) {
+      throw new Error('ffmpeg.exe bulunamadi. Binary kurulumunu kontrol edin.');
     }
   }
 
   buildResolveArgs(inputUrl) {
-    return [
-      '--dump-single-json',
-      '--flat-playlist',
-      '--ignore-config',
-      '--no-warnings',
-      '--extractor-args',
-      'youtube:player_client=android',
-      inputUrl
-    ];
+    validateUrl(inputUrl);
+    return ['--dump-single-json', '--flat-playlist', '--ignore-config', '--no-warnings',
+      '--cache-dir', path.join(this.appPaths.dataDir || this.appPaths.baseDir, 'yt-dlp-cache'),
+      '--no-js-runtimes', '--js-runtimes', 'node:' + (this.appPaths.jsRuntimePath || process.execPath),
+      '--ignore-errors', '--', inputUrl];
   }
 
-  resolveInput(inputUrl) {
-    const ytdlpPath = this.ensureYtDlpExists();
-    const result = spawnSync(ytdlpPath, this.buildResolveArgs(inputUrl), {
-      cwd: this.appPaths.baseDir,
-      windowsHide: true,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024
+  resolveInput(inputUrl, options = {}) {
+    if (options.signal && options.signal.aborted) return Promise.reject(cancelledError());
+    const child = spawnManaged(this.ensureYtDlpExists(), this.buildResolveArgs(inputUrl), {
+      cwd: this.appPaths.baseDir, windowsHide: true, detached: process.platform !== 'win32',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
     });
-
-    if (result.status !== 0) {
-      throw new Error((result.stderr || result.stdout || 'Playlist/video analiz edilemedi.').trim());
-    }
-
-    const payload = String(result.stdout || '').trim();
-    if (!payload) {
-      throw new Error('yt-dlp metadata donmedi.');
-    }
-
-    const parsed = JSON.parse(payload);
-    if (parsed && Array.isArray(parsed.entries)) {
-      const playlistUrl = normalizeResolvedUrl(parsed, inputUrl);
-      const playlistTitle = parsed.title || parsed.playlist_title || '';
-      const items = parsed.entries
-        .map(function map(entry, index) {
-          const resolvedUrl = normalizeResolvedUrl(entry, '');
-          if (!resolvedUrl) {
-            return null;
-          }
-
-          return {
-            url: resolvedUrl,
-            title: entry.title || '',
-            sourceType: 'playlist',
-            playlistUrl: playlistUrl,
-            playlistTitle: playlistTitle,
-            playlistIndex: Number(entry.playlist_index || entry.index || index + 1),
-            originalInputUrl: inputUrl
-          };
-        })
-        .filter(Boolean);
-
-      if (!items.length) {
-        throw new Error('Playlist icinden gecerli item cikarilamadi.');
-      }
-
-      return {
-        sourceType: 'playlist',
-        playlistTitle: playlistTitle,
-        playlistUrl: playlistUrl,
-        originalInputUrl: inputUrl,
-        items: items
+    return new Promise((resolve, reject) => {
+      let stdout = '';
+      let stderr = '';
+      let bytes = 0;
+      let failure;
+      const abort = () => { failure = cancelledError(); killProcessTree(child); };
+      const timer = setTimeout(() => {
+        failure = new Error('Analiz zaman asimina ugradi.');
+        failure.isTimeout = true;
+        killProcessTree(child);
+      }, options.timeoutMs || 60000);
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (options.signal) options.signal.removeEventListener('abort', abort);
       };
-    }
-
-    return {
-      sourceType: 'single',
-      originalInputUrl: inputUrl,
-      items: [
-        {
-          url: normalizeResolvedUrl(parsed, inputUrl),
-          title: parsed.title || '',
-          sourceType: 'single',
-          playlistUrl: '',
-          playlistTitle: '',
-          playlistIndex: null,
-          originalInputUrl: inputUrl
+      if (options.signal) options.signal.addEventListener('abort', abort, { once: true });
+      child.stdout.setEncoding('utf8');
+      child.stdout.on('data', chunk => {
+        if (failure) return;
+        bytes += Buffer.byteLength(chunk);
+        if (bytes > (options.maxBuffer || 64 * 1024 * 1024)) {
+          failure = new Error('Analiz ciktisi boyut sinirini asti.');
+          killProcessTree(child);
+        } else stdout += chunk;
+      });
+      child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString('utf8')).slice(-16384); });
+      child.once('error', error => { cleanup(); reject(error); });
+      child.once('close', code => {
+        cleanup();
+        if (failure) { reject(failure); return; }
+        try {
+          // --ignore-errors may leave usable entries alongside unavailable videos.
+          const parsed = JSON.parse(stdout.trim());
+          const result = this.parseMetadata(parsed, inputUrl);
+          if (code !== 0) result.warning = stderr.trim() || 'Bazi ogeler analiz edilemedi.';
+          resolve(result);
+        } catch (error) {
+          reject(new Error(stderr.trim() || ('Analiz basarisiz: ' + error.message)));
         }
-      ]
-    };
+      });
+    });
+  }
+
+  parseMetadata(parsed, inputUrl) {
+    if (!parsed || typeof parsed !== 'object') throw new Error('Gecersiz metadata.');
+    if (Array.isArray(parsed.entries)) {
+      const playlistTitle = parsed.title || parsed.playlist_title || '';
+      const items = parsed.entries.map((entry, index) => {
+        const url = resolvedUrl(entry, '');
+        if (!url) return null;
+        return { url, title: entry.title || '', sourceType: 'playlist', playlistUrl: inputUrl,
+          playlistTitle, playlistIndex: Number(entry.playlist_index || entry.index || index + 1),
+          originalInputUrl: inputUrl };
+      }).filter(Boolean);
+      if (!items.length) throw new Error('Playlist icinden gecerli oge cikarilamadi.');
+      return { sourceType: 'playlist', playlistUrl: inputUrl, playlistTitle, originalInputUrl: inputUrl,
+        unavailableItems: parsed.entries.length - items.length, items };
+    }
+    return { sourceType: 'single', originalInputUrl: inputUrl, items: [{
+      url: resolvedUrl(parsed, canonicalUrl(inputUrl)), title: parsed.title || '', sourceType: 'single',
+      originalInputUrl: inputUrl
+    }] };
   }
 
   buildArgs(job, downloadFolder) {
-    const args = [
-      '--newline',
-      '--ignore-config',
-      '--no-warnings',
-      '--no-playlist',
-      '--extractor-args',
-      'youtube:player_client=android',
-      '--restrict-filenames',
-      '--windows-filenames',
-      '--ffmpeg-location',
-      this.appPaths.binDir,
-      '--output',
-      path.join(downloadFolder, '%(title)s [%(id)s].%(ext)s'),
-      '--print',
-      'before_dl:TITLE:%(title)s',
-      '--print',
-      'after_move:FILEPATH:%(filepath)s',
-      '--progress-template',
-      'download:PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s',
-      '--progress-template',
-      'postprocess:PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s'
-    ];
-
-    if (job.format === 'audio') {
-      args.push(
-        '--extract-audio',
-        '--audio-format',
-        'mp3',
-        '--audio-quality',
-        '0'
-      );
-    } else {
-      args.push(
-        '--format',
-        'best[ext=mp4]/best'
-      );
-    }
-
-    args.push(job.url);
+    validateUrl(job.url);
+    const args = ['--newline', '--progress', '--ignore-config', '--no-warnings', '--no-playlist',
+      '--cache-dir', path.join(this.appPaths.dataDir || this.appPaths.baseDir, 'yt-dlp-cache'),
+      '--no-js-runtimes', '--js-runtimes', 'node:' + (this.appPaths.jsRuntimePath || process.execPath),
+      '--restrict-filenames', '--windows-filenames', '--ffmpeg-location', this.appPaths.binDir,
+      '--output', path.join(downloadFolder, '%(title)s [%(id)s].%(ext)s'),
+      '--print', 'before_dl:TITLE:%(title)s', '--print', 'after_move:FILEPATH:%(filepath)s',
+      '--progress-template', 'download:DOWNLOAD:%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s|%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(info.filename)s',
+      '--progress-template', 'postprocess:POSTPROCESS:%(progress.status)s|%(progress.postprocessor)s'];
+    if (job.format === 'audio') args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
+    else args.push('--format', 'best[ext=mp4]/best');
+    args.push('--', job.url);
     return args;
   }
 
   start(job, options) {
-    const downloadFolder = options.downloadFolder;
-    const onUpdate = options.onUpdate;
-    const ytdlpPath = this.ensureYtDlpExists();
+    const executable = this.ensureYtDlpExists();
     this.ensureFfmpegExists();
-
-    fs.mkdirSync(downloadFolder, { recursive: true });
-
-    const args = this.buildArgs(job, downloadFolder);
-
-    this.logger('Starting yt-dlp for ' + job.url + ' as ' + job.format);
-
-    const child = spawn(ytdlpPath, args, {
-      cwd: this.appPaths.baseDir,
-      windowsHide: true,
-      detached: process.platform !== 'win32'
+    fs.mkdirSync(options.downloadFolder, { recursive: true });
+    const child = spawnManaged(executable, this.buildArgs(job, options.downloadFolder), {
+      cwd: this.appPaths.baseDir, windowsHide: true, detached: process.platform !== 'win32',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
     });
-
+    this.logger('Starting ' + job.format + ' download: ' + job.url);
     let cancelled = false;
     let lastFilePath = '';
     let errorText = '';
-
-    const stdoutReader = readline.createInterface({ input: child.stdout });
-    const stderrReader = readline.createInterface({ input: child.stderr });
-
-    const applyLine = function applyLine(line) {
-      const normalized = String(line || '').trim();
-      if (!normalized) {
-        return;
-      }
-
-      if (normalized.indexOf('TITLE:') === 0) {
-        onUpdate({ title: normalized.slice(6).trim() });
-        return;
-      }
-
-      if (normalized.indexOf('FILEPATH:') === 0) {
-        lastFilePath = normalized.slice(9).trim();
-        onUpdate({ outputPath: lastFilePath });
-        return;
-      }
-
-      if (normalized.indexOf('PROGRESS:') === 0) {
-        const pieces = normalized.slice(9).split('|');
-        onUpdate({
-          progress: parsePercent(pieces[0]),
-          speed: (pieces[1] || '').trim() || '-',
-          eta: (pieces[2] || '').trim() || '-'
-        });
-        return;
-      }
-
-      if (normalized.indexOf('ERROR:') === 0) {
-        errorText = normalized;
-      }
+    let spawnError;
+    let stage = 'starting';
+    let lastTransfer = '';
+    let lastBytes = -1;
+    let lastPostprocess = '';
+    const readers = [child.stdout, child.stderr].map(input => readline.createInterface({ input }));
+    const update = (patch, activity) => {
+      if (cancelled) return;
+      options.onUpdate(patch, Boolean(activity));
     };
-
-    stdoutReader.on('line', applyLine);
-    stderrReader.on('line', function onErrorLine(line) {
-      const normalized = String(line || '').trim();
-      if (!normalized) {
-        return;
-      }
-
-      if (normalized.indexOf('ERROR:') === 0) {
-        errorText = normalized;
-      }
-
-      applyLine(normalized);
-    });
-
-    const promise = new Promise(function executor(resolve, reject) {
-      child.on('error', function onError(error) {
-        stdoutReader.close();
-        stderrReader.close();
-        reject(error);
-      });
-
-      child.on('close', function onClose(code) {
-        stdoutReader.close();
-        stderrReader.close();
-
-        if (cancelled) {
-          const error = new Error('Download cancelled');
-          error.isCancelled = true;
-          reject(error);
-          return;
+    const applyLine = line => {
+      if (cancelled) return;
+      line = String(line).trim();
+      if (line.startsWith('TITLE:')) {
+        update({ title: line.slice(6).trim(), stage: 'starting' }, stage === 'starting');
+        stage = 'metadata';
+      } else if (line.startsWith('FILEPATH:')) {
+        lastFilePath = line.slice(9).trim();
+        update({ outputPath: lastFilePath, stage: 'finishing' }, true);
+      } else if (line.startsWith('DOWNLOAD:')) {
+        const values = line.slice(9).split('|');
+        const bytes = numeric(values[0]);
+        const progress = numeric(values[2]);
+        const transfer = values.slice(5).join('|');
+        const activity = bytes !== null && (transfer !== lastTransfer || bytes > lastBytes);
+        if (activity) { lastTransfer = transfer; lastBytes = bytes; }
+        stage = 'download';
+        const patch = { stage, downloadedBytes: bytes, speed: values[3].trim(), eta: values[4].trim() };
+        if (progress !== null) patch.progress = Math.max(0, Math.min(100, progress));
+        update(patch, activity);
+      } else if (line.startsWith('POSTPROCESS:')) {
+        const marker = line.slice(12);
+        const activity = marker !== lastPostprocess || stage !== 'postprocess';
+        stage = 'postprocess';
+        lastPostprocess = marker;
+        // Postprocessors often have no percent. Do not overwrite the downloaded percentage.
+        update({ stage, speed: '-', eta: '-' }, activity);
+      } else if (line.startsWith('ERROR:')) errorText = line;
+    };
+    readers.forEach(reader => reader.on('line', applyLine));
+    const promise = new Promise((resolve, reject) => {
+      child.once('error', error => { spawnError = error; });
+      child.once('close', code => {
+        readers.forEach(reader => reader.close());
+        if (cancelled) { reject(cancelledError('Download cancelled')); return; }
+        if (spawnError) { reject(spawnError); return; }
+        if (code !== 0) { reject(new Error(errorText || ('yt-dlp exited with code ' + code))); return; }
+        const relative = path.relative(options.downloadFolder, lastFilePath);
+        if (!lastFilePath || relative.startsWith('..') || path.isAbsolute(relative)
+          || !fs.existsSync(lastFilePath) || !fs.statSync(lastFilePath).isFile()) {
+          reject(new Error('Indirme tamamlandi ancak cikti dosyasi dogrulanamadi.')); return;
         }
-
-        if (code === 0) {
-          resolve({ outputPath: lastFilePath });
-          return;
-        }
-
-        reject(new Error(errorText || ('yt-dlp exited with code ' + code)));
+        resolve({ outputPath: lastFilePath });
       });
     });
-
-    return {
-      promise: promise,
-      cancel: function cancel() {
-        cancelled = true;
-        killProcessTree(child.pid);
-      }
-    };
+    return { promise, cancel() { if (!cancelled) { cancelled = true; killProcessTree(child); } } };
   }
 }
 

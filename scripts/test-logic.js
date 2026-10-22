@@ -1,31 +1,14 @@
 const assert = require('assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const JobStore = require('../app/main/job-store');
 const SettingsStore = require('../app/main/settings-store');
 const DownloadManager = require('../app/main/download-manager');
 
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'elektron-yt-logic-'));
-const paths = {
-  baseDir: tempDir,
-  runtimeDir: tempDir,
-  dataDir: path.join(tempDir, 'data'),
-  logsDir: path.join(tempDir, 'data', 'logs'),
-  downloadsDir: path.join(tempDir, 'downloads'),
-  jobsFile: path.join(tempDir, 'data', 'jobs.json'),
-  settingsFile: path.join(tempDir, 'data', 'settings.json'),
-  archiveFile: path.join(tempDir, 'data', 'archive.txt'),
-  binDir: path.join(tempDir, 'bin')
-};
-
-[paths.dataDir, paths.logsDir, paths.downloadsDir, paths.binDir].forEach(function each(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-});
-
-fs.writeFileSync(paths.jobsFile, '[]', 'utf8');
-fs.writeFileSync(paths.settingsFile, '{}', 'utf8');
-fs.writeFileSync(paths.archiveFile, '', 'utf8');
+const { createWorkspace, waitFor } = require('./test-support');
+const workspace = createWorkspace('logic');
+const paths = workspace.paths;
+let manager;
 
 class FakeRunner {
   resolveInput(inputUrl) {
@@ -146,22 +129,17 @@ class FakeRunner {
   }
 }
 
-async function delay(ms) {
-  await new Promise(function wait(resolve) {
-    setTimeout(resolve, ms);
-  });
-}
-
 async function main() {
   const fakeRunner = new FakeRunner();
   const settingsStore = new SettingsStore(paths.settingsFile, {
     concurrency: 2,
     downloadFolder: paths.downloadsDir,
     maxRetries: 3,
+    startupTimeoutMs: 40,
     jobTimeoutMs: 40
   });
   const jobStore = new JobStore(paths.jobsFile);
-  const manager = new DownloadManager({
+  manager = new DownloadManager({
     jobStore: jobStore,
     settingsStore: settingsStore,
     paths: paths,
@@ -186,7 +164,7 @@ async function main() {
   assert.strictEqual(audioResult.queued, 2);
   assert.strictEqual(audioResult.format, 'audio');
 
-  await delay(180);
+  await waitFor(() => manager.activeTasks.size === 0 && manager.queue.length === 0, 'mixed downloads complete');
 
   let state = manager.getState();
   assert.strictEqual(state.stats.completed, 3);
@@ -207,40 +185,43 @@ async function main() {
     return job.url.indexOf('playlist-item-2') >= 0 && job.format === 'video';
   }).id;
 
-  manager.retryFailed(retryId);
-  await delay(80);
-  manager.retryFailed(retryId);
-  await delay(80);
-  manager.retryFailed(retryId);
-  await delay(80);
+  await manager.retryFailed(retryId);
+  await waitFor(() => manager.activeTasks.size === 0 && manager.queue.length === 0, 'retry complete');
+  await manager.retryFailed(retryId);
+  await waitFor(() => manager.activeTasks.size === 0 && manager.queue.length === 0, 'retry complete');
+  await manager.retryFailed(retryId);
+  await waitFor(() => manager.activeTasks.size === 0 && manager.queue.length === 0, 'retry complete');
 
   state = manager.getState();
   assert.strictEqual(state.jobs.filter(function filter(job) {
     return job.url.indexOf('playlist-item-2') >= 0 && job.format === 'video';
   })[0].retries, 3);
 
-  const retryResult = manager.retryFailed(retryId);
+  const retryResult = await manager.retryFailed(retryId);
   assert.strictEqual(retryResult.retried, 0);
 
   await manager.startDownloads('https://example.com/playlist-good', 'video');
-  await delay(20);
 
   state = manager.getState();
   assert.strictEqual(state.stats.skipped >= 1, true);
 
   await manager.startDownloads('https://youtu.be/timeout-case', 'video');
-  await delay(120);
+  await waitFor(() => manager.jobs.some(job => job.url.includes('timeout-case') && job.status === 'failed'), 'timeout job');
 
   state = manager.getState();
   assert.strictEqual(state.jobs.filter(function filter(job) {
     return job.url.indexOf('timeout-case') >= 0;
   })[0].errorMessage, 'Job zaman asimina ugradi.');
 
-  manager.dispose();
+  await manager.dispose();
   console.log('Logic tests passed.');
 }
 
 main().catch(function onError(error) {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
+}).finally(async function cleanup() {
+  if (manager) await manager.dispose();
+  await new Promise(resolve => setImmediate(resolve));
+  workspace.cleanup();
 });

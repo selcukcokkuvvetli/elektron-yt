@@ -1,0 +1,14 @@
+Elektron YT third-party notices
+
+Electron and Chromium: Electron distribution includes LICENSE and LICENSES.chromium.html.
+yt-dlp 2026.10.21: yt-dlp-LICENSE.txt and yt-dlp-THIRD_PARTY_LICENSES.txt.
+Source: https://github.com/yt-dlp/yt-dlp/tree/2026.10.21
+EJS scripts are bundled by the official yt-dlp executable.
+
+FFmpeg 9.0.2 essentials static build by Gyan Doshi:
+ffmpeg-GPLv3.txt contains the GPLv3 license.
+ffmpeg-build.txt contains the upstream build configuration and linked libraries.
+Publisher package: https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2
+FFmpeg source revision: https://github.com/FFmpeg/FFmpeg/commit/946fcce07b
+Build/source instructions: https://www.gyan.dev/ffmpeg/builds/
+The original upstream binaries are redistributed without modification.

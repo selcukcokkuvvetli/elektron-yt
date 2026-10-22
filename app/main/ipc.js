@@ -1,83 +1,48 @@
-const fs = require('fs');
 const path = require('path');
 const { dialog, ipcMain, shell } = require('electron');
+const { assertSender, assertJobId, safeOutput } = require('./ipc-validation');
 
-function registerIpc(options) {
-  const mainWindow = options.mainWindow;
-  const manager = options.manager;
-
-  const sendSnapshot = function sendSnapshot(snapshot) {
-    if (!mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('jobs:snapshot', snapshot);
-    }
+function registerIpc({ getWindow, manager, rendererUrl }) {
+  const send = (channel, payload) => {
+    const window = getWindow();
+    if (window && !window.isDestroyed()) window.webContents.send(channel, payload);
   };
-
-  const sendLog = function sendLog(line) {
-    if (!mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('jobs:log', line);
-    }
-  };
-
-  manager.on('snapshot', sendSnapshot);
-  manager.on('log', sendLog);
-
-  ipcMain.handle('app:bootstrap', function bootstrap() {
-    return manager.getState();
+  manager.on('snapshot', payload => send('jobs:snapshot', payload));
+  manager.on('delta', payload => send('jobs:delta', payload));
+  manager.on('log', payload => send('jobs:log', payload));
+  const handle = (channel, action) => ipcMain.handle(channel, (event, ...args) => {
+    assertSender(event, getWindow(), rendererUrl);
+    return action(...args);
   });
-
-  ipcMain.handle('downloads:start', function start(event, payload) {
-    return manager.startDownloads(
-      payload && payload.text ? payload.text : '',
-      payload && payload.format ? payload.format : 'video'
-    );
+  handle('app:bootstrap', () => manager.getState());
+  handle('downloads:start', payload => {
+    if (!payload || typeof payload.text !== 'string' || payload.text.length > 2 * 1024 * 1024
+      || !['video', 'audio'].includes(payload.format)) throw new Error('Gecersiz indirme girisi.');
+    return manager.startDownloads(payload.text, payload.format);
   });
-
-  ipcMain.handle('downloads:stop', function stop() {
-    return manager.stopAll();
+  handle('downloads:stop', () => manager.stopAll());
+  handle('downloads:retry-failed', payload => {
+    const id = payload && payload.jobId;
+    assertJobId(id, true);
+    return manager.retryFailed(id);
   });
-
-  ipcMain.handle('downloads:retry-failed', function retry(event, payload) {
-    return manager.retryFailed(payload && payload.jobId ? payload.jobId : null);
-  });
-
-  ipcMain.handle('downloads:clear', function clear() {
-    return manager.clearJobs();
-  });
-
-  ipcMain.handle('downloads:open-folder', function openFolder() {
-    return shell.openPath(manager.settings.downloadFolder);
-  });
-
-  ipcMain.handle('downloads:pick-folder', async function pickFolder() {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Indirme klasoru sec',
-      defaultPath: manager.settings.downloadFolder,
+  handle('downloads:clear', () => manager.clearJobs());
+  handle('downloads:open-folder', () => shell.openPath(manager.settings.downloadFolder));
+  handle('downloads:pick-folder', async () => {
+    const result = await dialog.showOpenDialog(getWindow(), {
+      title: 'Indirme klasoru sec', defaultPath: manager.settings.downloadFolder,
       properties: ['openDirectory', 'createDirectory']
     });
-
-    if (result.canceled || !result.filePaths.length) {
-      return manager.getState();
-    }
-
-    return manager.updateSettings({
-      downloadFolder: result.filePaths[0]
+    return result.canceled || !result.filePaths.length ? manager.getState()
+      : manager.updateSettings({ downloadFolder: result.filePaths[0] });
+  });
+  for (const action of ['file', 'folder']) {
+    handle('downloads:open-job-' + action, id => {
+      assertJobId(id);
+      const file = safeOutput(manager.findJob(id), manager.settings.downloadFolder);
+      if (!file) throw new Error('Dogrulanmis medya dosyasi bulunamadi.');
+      return shell.openPath(action === 'file' ? file : path.dirname(file));
     });
-  });
-
-  ipcMain.handle('downloads:open-job-file', function openJobFile(event, jobId) {
-    const job = manager.findJob(jobId);
-    if (!job || !job.outputPath || !fs.existsSync(job.outputPath)) {
-      return false;
-    }
-
-    return shell.openPath(job.outputPath);
-  });
-
-  ipcMain.handle('downloads:open-job-folder', function openJobFolder(event, jobId) {
-    const job = manager.findJob(jobId);
-    const folder = job && job.outputPath ? path.dirname(job.outputPath) : manager.settings.downloadFolder;
-    return shell.openPath(folder);
-  });
+  }
 }
-
 module.exports = registerIpc;

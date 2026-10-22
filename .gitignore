@@ -3,10 +3,17 @@ dist/
 release/
 *.log
 data/logs/*.log
+data/profile/
+data/yt-dlp-cache/
+data/*.bak
+data/*.corrupt-*
+data/*.tmp-*
+verification/
 app/bin/*.zip
 app/bin/*.7z
 app/bin/ffmpeg-temp/
 app/bin/*.exe
+app/bin/*.tmp-*
 downloads/*
 !downloads/.gitkeep
 build/.icon-temp/

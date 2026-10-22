@@ -1,5 +1,3 @@
-const { autoUpdater } = require('electron-updater');
-
 function setupAutoUpdater(options) {
   const app = options.app;
   const logger = typeof options.logger === 'function' ? options.logger : function noop() {};
@@ -14,8 +12,11 @@ function setupAutoUpdater(options) {
     return;
   }
 
+  const autoUpdater = options.updater || require('electron-updater').autoUpdater;
+
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
 
   autoUpdater.on('checking-for-update', function onChecking() {
     logger('Auto update: guncelleme kontrol ediliyor.');
