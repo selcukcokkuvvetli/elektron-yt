@@ -272,6 +272,13 @@ async function main() {
       metadata = currentMetadata;
       await applyUpdate(pkg.version);
     });
+    await step('Reinstall current version into Unicode/spaces directory before testing the new updater', async () => {
+      await uninstall(); verifyData();
+      requestedInstallDir = path.join(workspace.root, 'Özel Klasör', 'Elektron YT');
+      installDir = requestedInstallDir;
+      executable = path.join(installDir, 'ElektronYT.exe');
+      await install(installer, pkg.version); verifyData();
+    });
     let fixture;
     let fixtureMetadata;
     await step('Build private successor installer from current source (no tag or publication)', async () => {

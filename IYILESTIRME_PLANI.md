@@ -303,7 +303,8 @@ Uygulama sırası tablodaki sıradır. Her faz kendi testleriyle tamamlanır; te
 - [x] `Elektron-YT-Portable-1.2.0.exe`, `Elektron-YT-Setup-1.2.0.exe`, blockmap ve `latest.yml` bütünlüğünü doğrula.
 - [x] Bu Windows makinesinde unpacked ve gerçek portable exe için bootstrap, IPC, butonlar, iptal, gömülü Node ve ikinci örnek testlerini doğrula; ikinci portable kopyası birincinin program dosyalarını etkilemesin.
 - [ ] Temiz Windows ortamında portable açılış ve MP4/MP3 işlemlerini doğrula; ayrıca yazma izni olmayan taşınabilir konumu test et.
-- [ ] Installer kurulum, kısayol, klasör seçimi ve kaldırma sırasında kullanıcı verisinin korunmasını doğrula.
+- [x] Geçici GitHub-hosted Windows ortamında kullanıcı bazlı installer kurulumunu, Unicode/boşluk içeren özel yolu (`/D`), kısayol hedeflerini ve kaldırmada kullanıcı verisinin korunmasını doğrula.
+- [ ] Windows 10/11 masaüstünde interaktif wizard klasör seçimi, UAC ve tüm kullanıcılar kurulumunu ayrıca gözden geçir.
 - [x] `1.1.0` job/ayar ve iki arşiv biçimiyle migration fixture testlerini çalıştır; yeniden okuma ve retry davranışı doğrulandı.
 - [x] Legacy fixture'ları gerçek unpacked ve portable 1.2.0 paketlerinde açıp kapat; her hedefte ilk açılış ve yeniden açılışta üç iş, ayarlar ve iki arşiv biçimi korunsun. `scripts/test-package-migration.js`, `test:packages` ve CI kapsamındadır.
 - [ ] Gerçek kurulu 1.1.0 verileriyle paket/installer geçişini temiz Windows ortamında doğrula.
@@ -343,7 +344,7 @@ Uygulama sırası tablodaki sıradır. Her faz kendi testleriyle tamamlanır; te
 | T21 | Eksik/bozuk binary ve temiz paket | Önkontrol hatası veya doğrulanmış binary | Bootstrap/build entegrasyonu | Geçti (yerel) |
 | T22 | Eksik asset / hatalı hash | GitHub mutasyonu yapılmaz | Sahte API | Geçti (yerel) |
 | T23 | Upload kesintisi / aynı sürümü yeniden yayınlama | Public sürüm korunur, taslak sürdürülebilir | Sahte API | Geçti (yerel) |
-| T24 | Temiz Windows portable ve installer | Açılış, indirme, yollar, kaldırma doğru | Paket üzerinde manuel/otomatik | Yerel unpacked/portable ve ikinci örnek geçti; temiz Windows/installer bekliyor |
+| T24 | Temiz Windows portable ve installer | Açılış, indirme, yollar, kaldırma doğru | Paket üzerinde manuel/otomatik | GitHub-hosted Windows'ta kullanıcı bazlı kurulum/özel yol/kısayol, kurulu MP4/MP3 ve veri koruyan kaldırma geçti; Windows 10/11 wizard ve salt okunur portable konumu bekliyor |
 | T25 | `1.1.0` verisi → `1.2.0` | Geçmiş, ayar ve arşiv korunur | Paket + migration fixture | Motor fixture ve gerçek unpacked/portable paketlerinde iki açılış geçti; gerçek kurulu 1.1.0 installer geçişi bekliyor |
 | T26 | Installer update / portable ayrımı | Test feed'inde güncelleme tamamlanır; portable ayrımı korunur | İzole güncelleme ortamı | Yönlendirme/olay birim testleri geçti; gerçek update feed bekliyor |
 
@@ -394,6 +395,7 @@ Uygulama sırasında faz bazında küçük ve geri alınabilir değişiklikler t
 | 2026-10-22 | 10 | Eski kayıtların gerçek paketlerde migration/yeniden açılış kontrolü kalıcı regresyon testine eklendi. | Her hedef için ayrı legacy başlangıç verisi ve iki açılış: tamamlanmış iş/başlık/format korunur, yarım indirme iptale dönüşür, eski analiz hatası tanınır, ayarlar ve iki arşiv biçimi değişmez. Testler yalnızca geçici profili kullanır. | Güncel test commit'ini pushla; aynı CI/build/test akışını uygula; ardından manuel installer/update kontrolleri |
 | 2026-10-22 | 09–10 | İlk başarılı CI'ın dry-run günlüğünde `dirty: true` / `publishable: false` yakalandı. | `core.autocrlf=true` ile temiz geçici checkout'ta yayıncıdan gelen LF lisanslarını kopyalayınca beş lisans Git durumunda değişmiş göründü. Lisanslara `.gitattributes` ile `-text` eklendi; CI artık bootstrap ve paketleme sonrası temiz Git durumu ile `build-info.dirty: false` şartını ayrıca denetliyor. | Düzeltme commit'ini pushla; temiz checkout ve CI'da doğrula |
 | 2026-10-22 | 10 | Kullanıcı kalan installer/güncelleme testlerini ve MD sonucunu istedi. | Yerel Windows 11 Pro makinesinde Sandbox/VM aracı bulunamadı. Gerçek kurulumlar yalnızca açıkça etkinleştirilmiş geçici GitHub-hosted Windows runner'da çalışır; mevcut kurulum/kısayol/veri varsa test durur. Yerelde koruma kontrolü doğrulandı, installer çalıştırılmadı. | Yeni installer entegrasyonunu CI'da çalıştır ve kanıtı kaydet |
+| 2026-10-22 | 10 | Kurulum ve kaldırma entegrasyonu gerçek aday üzerinde geçti; eski sürümün CLI yol davranışı yakalandı. | Aday `39773599226`: özel Unicode/boşluklu yol, kayıt/kısayol, kurulu renderer/MP4/MP3, normal açılış ve veri koruyan kaldırma geçti. `39774565119` eski 1.1.0 installer'ın `/D` değerini ilk boşlukta kestiğini gösterdi. Yayımlanmış dosya değiştirilmiyor; legacy fixture boşluksuz ayrı dizin kullanıyor. Güncel installer'ın boşluklu yol testi korunuyor. | Gerçek 1.1.0 → 1.2.0 ve yeni updater döngüsünü tamamla |
 
 ### Karar günlüğü
 
@@ -441,15 +443,17 @@ Komut: `npm run test:installer`. Yalnızca GitHub-hosted Windows CI ve `ELEKTRON
 | Kontrol | Durum / kanıt |
 | --- | --- |
 | Kullanıcı bilgisayarında installer çalışmasını engelleyen koruma | Yerelde doğrulandı; installer başlatılmadı. |
-| Temiz kullanıcı bazlı kurulum, Unicode/boşluk içeren özel klasör, kayıt defteri ve kısayol hedefleri | CI sonucu bekleniyor. |
-| Kurulu uygulamada renderer/IPC ve kurulu binary/gömülü Node ile MP4/MP3 runner | CI sonucu bekleniyor. |
-| Kaldırmada kayıt defteri/kısayol temizliği; işler, ayarlar, iki arşiv biçimi ve indirmelerin korunması | CI sonucu bekleniyor. |
+| Temiz kullanıcı bazlı kurulum, Unicode/boşluk içeren özel klasör, kayıt defteri ve kısayol hedefleri | Geçti: aday koşusu `39773599226`, ilk aşama. Kısa/uzun Windows yolları gerçek dosya kimliğiyle karşılaştırılıyor. |
+| Kurulu uygulamada renderer/IPC ve kurulu binary/gömülü Node ile MP4/MP3 runner | Geçti: aynı koşuda kurulu Electron 45 / Node 24.22.0 ile T01–T08 ve smoke. |
+| Kaldırmada kayıt defteri/kısayol temizliği; işler, ayarlar, iki arşiv biçimi ve indirmelerin korunması | Geçti: aynı koşuda normal açılış/kapanış ve gerçek NSIS kaldırma sonrası kayıt/indirme kontrolleri. |
 | Yayımlanmış gerçek 1.1.0 kurulumu → gerçek 1.2.0 güncellemesi ve veri uyumluluğu | CI sonucu bekleniyor. |
 | Yeni updater ile erişilemeyen feed ve yanlış SHA512 reddi | CI sonucu bekleniyor; hatalı paket kapanışta kurulamaz. |
 | Yeni updater ile özel sonraki patch paketini indirme, kapanışta kurma, sürüm/kısayol/veri doğrulama ve yeniden açılış | CI sonucu bekleniyor. |
 | Gerçek portable başlatıcıda ayrı veri ve otomatik güncellemenin kapalı olması | CI sonucu bekleniyor. |
 
 Makine tarafından okunabilir rapor `verification/installer.json` dosyasına yazılır ve CI'da `windows-verification-reports` artifact'i olarak başarısız koşularda da saklanır. İnteraktif wizard sayfaları/UAC, tüm kullanıcılar kurulumu, imzalı publisher doğrulaması, diferansiyel indirme ve gerçek public GitHub feed'inden sürüm yükseltmesi bu testin kapsamı dışındadır. Salt okunur portable konumu ayrıca açık kalır.
+
+`Installer candidate verification` akışı, test düzeltmelerini mevcut paket artifact'iyle daha hızlı sınar. Rapor `commit` (test kodu) ve `packageCommit` (paketin kaynağı) alanlarını ayrı tutar; bu akış güncel kaynakla tam build koşusunun yerine geçmez. Normal uygulamalar yalnızca test başlatıcısının eklediği loopback debugger portundan `window.close()` ile kapatılır; gerçek `before-quit`/`quit` ve updater'ın kapanışta kurulum zinciri çalışır. Üretim koduna debugger ayarı eklenmez. Güncelleme kabulü indirmeyi, sürüm değişimini, yeniden açılışı ve veri/kısayol korunmasını birlikte gerektirir.
 
 ## 10. Referanslar
 
