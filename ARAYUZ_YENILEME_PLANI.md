@@ -1,6 +1,6 @@
 # Elektron YT — Arayüz yenileme planı
 
-Tarih: **23 Ekim 2026** · Mevcut sürüm: **1.2.0** · Durum: **Tasarım ve uygulama planı hazır; ürün arayüzü henüz değiştirilmedi.**
+Tarih: **23 Ekim 2026** · Mevcut sürüm: **1.2.0** · Durum: **UI-1, UI-2 ve UI-3 uygulandı. UI-4 yerel otomatik ve paket kontrolleri geçti; fiziksel Windows DPI/ekran okuyucu kabulü açık.**
 
 Kullanıcının tercihi: **koyu tema, sade ve modern görünüm**. Bu belge yeni arayüzün kapsamını, ekran davranışlarını, uygulama sırasını ve kabul ölçütlerini tanımlar. Genel teknik çalışma kaydı [İyileştirme Planı](IYILESTIRME_PLANI.md) içinde korunur.
 
@@ -151,12 +151,12 @@ YouTube'dan kaldırılmış videonun hatası diğer indirmeleri durdurmamalı. �
 | Faz | İş | Etkilenen yerler | Kabul / çıkış koşulu | Durum |
 | --- | --- | --- | --- | --- |
 | UI-0 | Tasarım yönü, yerleşim, örnek ekran, kapsam | Bu belge, `docs/arayuz-onizleme.html` | Koyu/sade yön ve davranışlar yazılı; taslak incelenebilir | Tamamlandı: plan ve taslak |
-| UI-1 | Kompakt ana ekran, koyu tasarım token'ları, Türkçe metinler | `index.html`, `styles.css`, `renderer.js` | Giriş/biçim/klasör ve liste görünür; mevcut temel IPC akışı çalışır | Planlandı |
-| UI-2 | Yeni satırlar, filtre/arama, sonuç özeti, ayrıntı ve temizleme onayı | Renderer + smoke/performance kontrolleri | 44 öğe / 43 başarılı / 1 hata senaryosu anlaşılır; 100 satır sınırı ve odak korunur | Planlandı |
-| UI-3 | Playlist tek-video geri dönüş koruması ve son biçim tercihi | Runner/manager, ayar doğrulaması, gerekirse dar kapsamlı IPC | Gerçek playlist beklenirken yanlış tek dosya başlanmaz; biçim tercihi güvenli saklanır | Planlandı |
-| UI-4 | Erişilebilirlik, farklı pencere/ölçek, paket kabulü ve kayıt | Smoke/performance, `test:packages`, yerel build, MD | Yerel kontroller ve gerçek paket davranışı geçer; çalıştırılmayanlar açık kalır | Planlandı |
+| UI-1 | Kompakt ana ekran, koyu tasarım token'ları, Türkçe metinler | `index.html`, `styles.css`, `renderer.js` | Giriş/biçim/klasör ve liste görünür; mevcut temel IPC akışı çalışır | Tamamlandı |
+| UI-2 | Yeni satırlar, filtre/arama, sonuç özeti, ayrıntı ve temizleme onayı | Renderer + smoke/performance kontrolleri | 44 öğe / 43 başarılı / 1 hata senaryosu anlaşılır; 100 satır sınırı ve odak korunur | Tamamlandı |
+| UI-3 | Playlist tek-video geri dönüş koruması ve son biçim tercihi | Runner/manager, ayar doğrulaması, gerekirse dar kapsamlı IPC | Gerçek playlist beklenirken yanlış tek dosya başlanmaz; biçim tercihi güvenli saklanır | Tamamlandı |
+| UI-4 | Erişilebilirlik, farklı pencere/ölçek, paket kabulü ve kayıt | Smoke/performance, `test:packages`, yerel build, MD | Yerel kontroller ve gerçek paket davranışı geçer; çalıştırılmayanlar açık kalır | Yerel otomatik ve paket kontrolleri geçti; fiziksel DPI/ekran okuyucu kontrolü açık |
 
-**İlk uygulama adımı UI-1'dir.** UI-1/2 yapılırken indirme motoruna yeni yetenek eklenmez. UI-3'ün davranış değişiklikleri ayrı commit ve ilgili testlerle ele alınır. Önizleme dosyası uygulamaya doğrudan kopyalanmaz; mevcut güvenli preload/IPC yapısına uyarlanır.
+**Uygulama durumu:** Playlist/ayar korumaları `7f2fe2f`, ürün arayüzü ve yeni UI kontrolleri `329e711` commit'inde tamamlandı. Ürün mevcut güvenli preload/IPC yapısına uyarlandı; temsili veriler ürüne taşınmadı. Paket kaynağı `329e7113d8253184914544a7bcf3140014d76987`; sonraki sonuç dokümantasyonu kaynak kodunu değiştirmez. Sıradaki kabul fiziksel Windows DPI/ekran okuyucu incelemesidir.
 
 **Taslak kontrolü (23 Ekim):** Örnek ekran Electron'da görüntülendi. 44 satır, etkin filtrede 19 öğe, hata filtresinde 1 öğe, ayrıntı penceresi ve biçim seçimi kontrol edildi. Yeni biçim seçimi mevcut satırların MP3 etiketini değiştirmiyor. 1366/1000/760 px genişliklerde yatay sayfa taşması ve konsol hatası görülmedi. Aktif/sonuç ekran görüntüleri `verification/ui-plan-*.png` içinde yerel kanıttır. Bunlar ürünün UI-1–4 kabul testleri değildir.
 
@@ -179,9 +179,28 @@ YouTube'dan kaldırılmış videonun hatası diğer indirmeleri durdurmamalı. �
 - [x] Kullanıcının koyu/sade/modern tercihi kaydedildi.
 - [x] Ekran düzeni, metinler, durumlar ve uygulama fazları planlandı.
 - [x] Temsili verilerle bağımsız ekran taslağı hazırlandı.
-- [ ] UI-1 ürün ekranına uygulandı.
-- [ ] UI-2 liste ve etkileşimleri tamamlandı.
-- [ ] UI-3 playlist koruması ve biçim tercihi tamamlandı.
-- [ ] UI-4 yerel/paket ve erişilebilirlik kabulü tamamlandı.
+- [x] UI-1 ürün ekranına uygulandı.
+- [x] UI-2 liste ve etkileşimleri tamamlandı.
+- [x] UI-3 playlist koruması ve biçim tercihi tamamlandı.
+- [x] UI-4 yerel otomatik kontroller ve gerçek paket regresyonu geçti.
+- [ ] UI-4 fiziksel Windows DPI ayarları ve ekran okuyucuyla manuel kabul tamamlandı.
 
-Bu aşamanın çıktısı **uygulanabilir tasarım planı ve örnek ekrandır**. Ürüne uygulama ve yeni paket üretimi sonraki çalışma aşamasıdır.
+## 12. Uygulama ve doğrulama sonucu — 23 Ekim 2026
+
+| Kontrol | Sonuç / kanıt |
+| --- | --- |
+| Gerçek ürün ekranı | Kompakt koyu ekran, dört sütun, filtre/arama, ayrıntı, temizleme onayı, kapalı teknik panel ve Türkçe metinler uygulandı. |
+| Biçim tercihi | İlk kullanım MP3. Son seçim dar kapsamlı `settings:preferences` IPC'siyle saklanır; geçersiz değerler ve ek ayar alanları reddedilir. Mevcut işler değişmez; legacy ayarlar uyumlu okunur. |
+| Playlist koruması | Analizde `--yes-playlist` kullanılır. Playlist beklenirken tek video sonucu gelirse indirme başlamaz. Video+liste URL'si için kullanıcı açıkça yalnız videoyu seçebilir. Başarısız giriş metni korunur. |
+| `release:prepare -- --version 1.2.0` | Geçti: kaynak testleri, gerçek runner, iki paket, paket smoke/ikinci örnek/migration ve dry-run. Günlük: `verification/ui-release-validation.log`. |
+| UI senaryoları | 44 öğe / 43 başarılı / 1 hata özeti, filtre/arama, ayrıntı, temizlemeden vazgeçme/onaylama, analiz sırasında durdurma ve biçim tercihi smoke içinde doğrulandı. |
+| Performans | 5.000 iş: ilk çizim yaklaşık 2,7 ms, sıcak çizim 0,8 ms; 100 DOM işi ve 200 log sınırı korundu. `verification/performance.json`. |
+| Yerleşim | 1280×720, 1366×768, 1480×940, 960×640 ve %125/%150/%200 uygulama büyütmesi: yatay taşma yok. Normal büyütmede başlat düğmesi ilk görünümde. Bu kontrol fiziksel Windows DPI ayarı yerine geçmez. |
+| Klavye / kontrast örnekleri | Gerçek Electron girdisiyle Escape ayrıntıyı kapattı, odak ilgili düğmeye döndü. Altı metin/zemin örneğinde hesaplanan en düşük oran 9,33:1. `verification/ui-layout.json`. |
+| Gerçek YouTube analizi | Geçersiz örnek playlist reddedildi. İkinci bağlantı 44, önceki ilk bağlantı bu kontrolde 97 öğe olarak çözüldü. Medya indirilmedi; 97 MP3 indirme doğrulanmış sayılmaz. `verification/ui-playlist-guard.json`. |
+| Paketler | `release/1.2.0/` içinde portable/NSIS, metadata ve hash'ler doğrulandı. Test edilen commit'te `dirty: false`, dry-run `publishable: true`. Public yayın yapılmadı. İki paket de `NotSigned`. |
+| Veri ve güvenlik | Üç mevcut kullanıcı veri dosyası kaynak commit içeriğiyle aynı; audit 0 açık. CSP/sandbox/IPC kaynak ve medya yolu kontrolleri korunur. |
+
+Toplu rapor `verification/ui-delivery.json` ve güncel `verification/final.json` içindedir. Gerçek ekran örnekleri `verification/ui-current-*.png` dosyalarına kaydedildi. Bunlar yerel çıktıdır; GitHub yalnızca kod ve sürüm geçmişi için kullanılır.
+
+Fiziksel DPI/ekran okuyucu kontrolü ile önceki ayrı Windows installer/veri geçişi/güncelleme kabulü açık kalır. Yeni arayüzün kaynak ve yerel paket uygulaması tamamlandı.

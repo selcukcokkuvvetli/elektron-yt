@@ -2,6 +2,9 @@
 
 ## 1.2.0 — Yerel doğrulama ve paket hazırlığı
 
+- Koyu ve kompakt masaüstü arayüzü: sade indirme listesi, filtre/arama, Türkçe durumlar, parça ayrıntıları ve temizleme onayı eklendi.
+- İlk kullanım biçimi MP3 olarak ayarlandı; son MP3/video tercihi doğrulanarak saklanıyor ve mevcut işlerin biçimi korunuyor.
+- Playlist beklenirken tek video sonucuna sessiz geçiş engellendi; kullanıcı bağlantıdaki yalnız videoyu açıkça seçebiliyor.
 - Aktif indirmelerin yanlış zaman aşımıyla kesilmesi düzeltildi; gerçek yüzde, hız ve ETA çıktısı etkinleştirildi.
 - Playlist/video analizi asenkron hale getirildi; analiz süresi sınırı ve süreç ağacı iptali eklendi.
 - Durdur, temizle ve kapanış sonrasında eski görevlerin yeni iş oluşturması veya durumu değiştirmesi engellendi. Windows Job Object ile başlatma/iptal sırasında alt süreç yarışı giderildi.
