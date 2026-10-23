@@ -37,4 +37,12 @@ function safeOutput(job, defaultFolder) {
   } catch (_) { return null; }
 }
 
-module.exports = { assertSender, assertJobId, safeOutput, documentPath };
+function validatePreferences(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || Object.keys(payload).length !== 1
+    || !Object.prototype.hasOwnProperty.call(payload, 'preferredFormat') || !['audio', 'video'].includes(payload.preferredFormat)) {
+    throw new Error('Geçersiz arayüz tercihi.');
+  }
+  return { preferredFormat: payload.preferredFormat };
+}
+
+module.exports = { assertSender, assertJobId, safeOutput, documentPath, validatePreferences };

@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { killProcessTree, cancelledError, spawnManaged } = require('./process-utils');
-const { validateUrl, canonicalUrl } = require('./urls');
+const { validateUrl, canonicalUrl, isYouTubePlaylist } = require('./urls');
 
 function numeric(value) {
   const text = String(value == null ? '' : value).replace('%', '').replace(',', '.').trim();
@@ -37,7 +37,7 @@ class YtDlpRunner {
 
   buildResolveArgs(inputUrl) {
     validateUrl(inputUrl);
-    return ['--dump-single-json', '--flat-playlist', '--ignore-config', '--no-warnings',
+    return ['--dump-single-json', '--flat-playlist', '--yes-playlist', '--ignore-config', '--no-warnings',
       '--cache-dir', path.join(this.appPaths.dataDir || this.appPaths.baseDir, 'yt-dlp-cache'),
       '--no-js-runtimes', '--js-runtimes', 'node:' + (this.appPaths.jsRuntimePath || process.execPath),
       '--ignore-errors', '--', inputUrl];
@@ -86,7 +86,8 @@ class YtDlpRunner {
           if (code !== 0) result.warning = stderr.trim() || 'Bazi ogeler analiz edilemedi.';
           resolve(result);
         } catch (error) {
-          reject(new Error(stderr.trim() || ('Analiz basarisiz: ' + error.message)));
+          const message = stderr.trim() || ('Analiz basarisiz: ' + error.message);
+          reject(new Error(isYouTubePlaylist(inputUrl) ? 'PLAYLIST_UNAVAILABLE: Listeye erişilemedi. ' + message : message));
         }
       });
     });
@@ -107,6 +108,7 @@ class YtDlpRunner {
       return { sourceType: 'playlist', playlistUrl: inputUrl, playlistTitle, originalInputUrl: inputUrl,
         unavailableItems: parsed.entries.length - items.length, items };
     }
+    if (isYouTubePlaylist(inputUrl)) throw new Error('PLAYLIST_UNAVAILABLE: Listeye erişilemedi; tek video otomatik indirilmedi.');
     return { sourceType: 'single', originalInputUrl: inputUrl, items: [{
       url: resolvedUrl(parsed, canonicalUrl(inputUrl)), title: parsed.title || '', sourceType: 'single',
       originalInputUrl: inputUrl

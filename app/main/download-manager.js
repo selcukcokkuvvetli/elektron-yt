@@ -3,7 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { EventEmitter } = require('events');
 const YtDlpRunner = require('./ytdlp-runner');
-const { canonicalUrl, validateUrl } = require('./urls');
+const { canonicalUrl, validateUrl, isYouTubePlaylist } = require('./urls');
 
 const nowIso = () => new Date().toISOString();
 const sanitizeFormat = format => format === 'audio' ? 'audio' : 'video';
@@ -298,6 +298,9 @@ class DownloadManager extends EventEmitter {
         : { sourceType: 'single', items: [{ url: entry.url }] };
       if (entry.generation !== this.generation || this.disposed || entry.controller.signal.aborted) return;
       if (!resolved || !Array.isArray(resolved.items) || !resolved.items.length) throw new Error('Gecerli oge bulunamadi.');
+      if (isYouTubePlaylist(entry.url) && resolved.sourceType !== 'playlist') {
+        throw new Error('PLAYLIST_UNAVAILABLE: Listeye erişilemedi; tek video otomatik indirilmedi.');
+      }
       if (resolved.sourceType === 'playlist') {
         result.playlistsResolved = 1;
         result.playlistItems = resolved.items.length;

@@ -1,6 +1,6 @@
 const path = require('path');
 const { dialog, ipcMain, shell } = require('electron');
-const { assertSender, assertJobId, safeOutput } = require('./ipc-validation');
+const { assertSender, assertJobId, safeOutput, validatePreferences } = require('./ipc-validation');
 
 function registerIpc({ getWindow, manager, rendererUrl }) {
   const send = (channel, payload) => {
@@ -21,6 +21,7 @@ function registerIpc({ getWindow, manager, rendererUrl }) {
     return manager.startDownloads(payload.text, payload.format);
   });
   handle('downloads:stop', () => manager.stopAll());
+  handle('settings:preferences', payload => manager.updateSettings(validatePreferences(payload)));
   handle('downloads:retry-failed', payload => {
     const id = payload && payload.jobId;
     assertJobId(id, true);

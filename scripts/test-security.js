@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
-const { assertSender, assertJobId, safeOutput, documentPath } = require('../app/main/ipc-validation');
+const { assertSender, assertJobId, safeOutput, documentPath, validatePreferences } = require('../app/main/ipc-validation');
 const { validateUrl, canonicalUrl } = require('../app/main/urls');
 const { createWorkspace } = require('./test-support');
 
@@ -17,6 +17,10 @@ try {
   assert.throws(() => assertSender({ sender: webContents, senderFrame: { ...mainFrame, routingId: 2 } }, window, mainFrame.url), /yetkisiz/);
   assert.throws(() => assertSender({ sender: {}, senderFrame: mainFrame }, window, mainFrame.url), /yetkisiz/);
   assert.throws(() => assertJobId('bad"]'), /kimligi/);
+  assert.deepStrictEqual(validatePreferences({ preferredFormat: 'audio' }), { preferredFormat: 'audio' });
+  for (const payload of [null, [], {}, { preferredFormat: 'exe' }, { preferredFormat: 'audio', downloadFolder: 'C:/Windows' }, { concurrency: 10 }]) {
+    assert.throws(() => validatePreferences(payload), /arayüz tercihi/);
+  }
   assert.strictEqual(documentPath(mainFrame.url), documentPath(pathToFileURL(fs.realpathSync(html)).href));
   assert.throws(() => documentPath(mainFrame.url + '?unexpected'), /kayna/);
   for (const url of ['--exec=unexpected', 'file:///C:/Windows', 'https://user:password@example.com']) assert.throws(() => validateUrl(url));

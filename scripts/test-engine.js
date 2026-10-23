@@ -4,6 +4,7 @@ const path = require('path');
 const DownloadManager = require('../app/main/download-manager');
 const JobStore = require('../app/main/job-store');
 const SettingsStore = require('../app/main/settings-store');
+const YtDlpRunner = require('../app/main/ytdlp-runner');
 const { createWorkspace, waitFor } = require('./test-support');
 
 function deferred() {
@@ -40,6 +41,21 @@ async function scenario(name, test, seed) {
 }
 
 async function main() {
+  const parser = new YtDlpRunner({ baseDir: '.' });
+  const watchList = 'https://www.youtube.com/watch?v=fixture&list=fixture-list';
+  assert.throws(() => parser.parseMetadata({ id: 'fixture', title: 'Single fallback' }, watchList), /PLAYLIST_UNAVAILABLE/);
+  assert.strictEqual(parser.parseMetadata({ id: 'fixture' }, 'https://youtu.be/fixture').sourceType, 'single');
+  assert.strictEqual(parser.parseMetadata({ entries: [{ id: 'first' }, null, { id: 'second' }] }, watchList).items.length, 2);
+  await scenario('UI-3 unavailable playlist never queues a silent single video; explicit video still works', async (manager, tasks) => {
+    const result = await manager.startDownloads(watchList, 'audio');
+    assert.strictEqual(result.failedInputs, 1);
+    assert.strictEqual(result.queued, 0);
+    assert.strictEqual(tasks.length, 0);
+    assert.strictEqual(manager.jobs[0].url, watchList);
+    assert.match(manager.jobs[0].errorMessage, /PLAYLIST_UNAVAILABLE/);
+    assert.strictEqual((await manager.startDownloads('https://www.youtube.com/watch?v=fixture', 'audio')).queued, 1);
+    assert.strictEqual(tasks[0].job.format, 'audio');
+  });
   await scenario('T09/T10 overlapping playlists and concurrent starts', async (manager, tasks) => {
     manager.resolver.resolveInput = async url => ({ sourceType: 'playlist', items: [
       { url: 'https://youtu.be/shared', sourceType: 'playlist', playlistUrl: url, playlistTitle: 'Fixture', playlistIndex: 1 }

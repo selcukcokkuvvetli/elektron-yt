@@ -55,6 +55,17 @@ try {
   assert.ok(invalid.warnings.length >= 3);
   console.log('PASS T16 settings boundaries and fallback');
 
+  fs.writeFileSync(settingsFile, JSON.stringify({ concurrency: 5 }));
+  const formatDefaults = { ...defaults, preferredFormat: 'audio' };
+  const preferences = new SettingsStore(settingsFile, formatDefaults);
+  assert.strictEqual(preferences.load().preferredFormat, 'audio');
+  preferences.update({ preferredFormat: 'video' });
+  assert.strictEqual(new SettingsStore(settingsFile, formatDefaults).load().preferredFormat, 'video');
+  assert.strictEqual(preferences.load().concurrency, 5);
+  assert.throws(() => preferences.update({ preferredFormat: 'bad' }), /Geçersiz/);
+  assert.strictEqual(new SettingsStore(settingsFile, formatDefaults).load().preferredFormat, 'video');
+  console.log('PASS UI-3 preferred format persists, rejects invalid values and preserves legacy settings');
+
   fs.writeFileSync(jobsFile, JSON.stringify([{ id: 'legacy', url: 'https://youtu.be/legacy', status: 'failed' }]));
   assert.strictEqual(new JobStore(jobsFile).load()[0].id, 'legacy');
   fs.writeFileSync(jobsFile, JSON.stringify([{ id: 'legacy_analysis', url: '--invalid', status: 'failed', errorMessage: 'Analiz hatasi: invalid' }]));

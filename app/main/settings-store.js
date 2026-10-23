@@ -41,6 +41,10 @@ class SettingsStore {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Gecersiz ayarlar.');
       const settings = { ...this.defaults };
       const warnings = [];
+      if (value.preferredFormat !== undefined) {
+        if (['audio', 'video'].includes(value.preferredFormat)) settings.preferredFormat = value.preferredFormat;
+        else warnings.push('Geçersiz indirme biçimi varsayılana döndü.');
+      }
       for (const [key, limits] of Object.entries(ranges)) {
         if (value[key] === undefined) continue;
         const number = Number(value[key]);

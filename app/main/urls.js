@@ -25,4 +25,10 @@ function canonicalUrl(value) {
   return url.href;
 }
 
-module.exports = { validateUrl, canonicalUrl };
+function isYouTubePlaylist(value) {
+  const url = validateUrl(value);
+  return ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'].includes(url.hostname.toLowerCase())
+    && Boolean(url.searchParams.get('list'));
+}
+
+module.exports = { validateUrl, canonicalUrl, isYouTubePlaylist };
