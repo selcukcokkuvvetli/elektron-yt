@@ -6,6 +6,8 @@ Windows 10/11 x64 için Electron tabanlı YouTube video ve MP3 toplu indirme uyg
 
 Bulgular, fazlar, kabul ölçütleri, test kanıtları ve kalan işler [İyileştirme Planı](IYILESTIRME_PLANI.md) üzerinden takip edilir. Kullanıcıya dönük değişiklikler [CHANGELOG](CHANGELOG.md) dosyasındadır.
 
+Koyu, sade ve modern masaüstü arayüzü için [Arayüz Yenileme Planı](ARAYUZ_YENILEME_PLANI.md) ve [etkileşimli ekran taslağı](docs/arayuz-onizleme.html) hazırdır. Taslak temsili veriler kullanır; gerçek indirme başlatmaz. Ürün arayüzüne uygulama henüz yapılmadı.
+
 GitHub kod ve sürüm geçmişi için kullanılır. Push ve pull request işlemleri GitHub Actions testi, paketleme veya yayın başlatmaz; workflow dosyaları kaldırılmıştır. Test ve paket hazırlama komutları geliştirici bilgisayarında elle çalıştırılır.
 
 ## Geliştirme ortamı
