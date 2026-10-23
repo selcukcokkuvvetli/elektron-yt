@@ -35,7 +35,7 @@ else {
   app.whenReady().then(() => {
     ensureAppPaths(paths);
     const settingsStore = new SettingsStore(paths.settingsFile, {
-      concurrency: 3, downloadFolder: paths.downloadsDir, maxRetries: 3, jobTimeoutMs: 180000,
+      concurrency: 3, preferredFormat: 'audio', downloadFolder: paths.downloadsDir, maxRetries: 3, jobTimeoutMs: 180000,
       startupTimeoutMs: 60000, postprocessTimeoutMs: 600000, analysisTimeoutMs: 60000, analysisConcurrency: 1
     });
     manager = new DownloadManager({ paths, jobStore: new JobStore(paths.jobsFile), settingsStore });
@@ -49,8 +49,8 @@ else {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1480, height: 940, minWidth: 1180, minHeight: 720, show: !smoke,
-    backgroundColor: '#08131a', title: 'Elektron YT',
+    width: 1280, height: 820, minWidth: 960, minHeight: 640, show: !smoke,
+    backgroundColor: '#0d1118', title: 'Elektron YT',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true,
       nodeIntegration: false, sandbox: true, webSecurity: true, webviewTag: false,
       allowRunningInsecureContent: false }

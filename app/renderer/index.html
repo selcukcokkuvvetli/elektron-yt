@@ -1,120 +1,208 @@
 <!doctype html>
 <html lang="tr">
   <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Elektron YT</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
+    <a class="skip-link" href="#queueTitle">İndirme listesine geç</a>
     <div class="shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Portable Bulk Downloader</p>
-          <h1>Elektron YT</h1>
-          <p class="subtitle">
-            YouTube linklerini toplu kuyruga al, canli takip et, hatalilari tek tikla yeniden dene.
-          </p>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"/>
+            </svg>
+          </span>
+          <div>
+            <h1>Elektron YT</h1>
+            <p>Videoların ve müziklerin, tek bir yerde.</p>
+          </div>
         </div>
-        <div class="hero-meta">
-          <div class="meta-card">
-            <span class="meta-label">Indirme klasoru</span>
-            <strong id="downloadFolder">-</strong>
-          </div>
-          <div class="meta-card binaries">
-            <span class="meta-label">Binary durumu</span>
-            <div class="binary-row">
-              <span id="ytDlpStatus" class="pill neutral">yt-dlp bekleniyor</span>
-              <span id="ffmpegStatus" class="pill neutral">ffmpeg bekleniyor</span>
-            </div>
-          </div>
+        <div class="header-actions">
+          <span id="toolsStatus" class="tools-status">İndirme araçları kontrol ediliyor…</span>
+          <button id="settingsButton" class="ghost">Ayarlar</button>
         </div>
       </header>
-
-      <main class="grid">
-        <section class="panel composer">
-          <div class="panel-head">
-            <h2>Link Girisi</h2>
-            <button id="pickFolderButton" class="ghost">Klasor Degistir</button>
+      <main class="workspace">
+        <aside class="entry-column">
+          <section class="panel composer" aria-labelledby="composerTitle">
+            <h2 id="composerTitle">Yeni indirme</h2>
+            <p class="muted intro">Bir video ya da bütün bir playlist.</p>
+            <fieldset class="format-field">
+              <legend>İndirme biçimi</legend>
+              <div class="format-toggle">
+                <label>
+                  <input type="radio" name="downloadFormat" value="audio">
+                  <span>♫ MP3</span>
+                </label>
+                <label>
+                  <input type="radio" name="downloadFormat" value="video" checked>
+                  <span>▷ Video</span>
+                </label>
+              </div>
+            </fieldset>
+            <label class="field-label" for="urlInput">Bağlantı ekle</label>
+            <textarea id="urlInput" spellcheck="false" placeholder="YouTube video veya playlist bağlantısı…" aria-describedby="inputHint analysisStatus">
+            </textarea>
+            <p id="inputHint" class="hint">Her satıra bir bağlantı ekle.</p>
+            <p id="analysisStatus" class="analysis-status" role="status" aria-live="polite">
+            </p>
+            <div class="folder-section">
+              <span class="field-label">Şuraya kaydedilecek</span>
+              <strong id="downloadFolder" class="folder-path">Klasör yükleniyor…</strong>
+              <p class="hint">MP3 ve video dosyaları ayrı alt klasörlere kaydedilir.</p>
+              <div class="folder-actions">
+                <button id="pickFolderButton" class="text-button">Değiştir</button>
+                <button id="openFolderButton" class="text-button">Klasörü aç</button>
+              </div>
+            </div>
+            <button id="startButton" class="primary" disabled>İndirmeye başla</button>
+            <p id="formatHint" class="hint centered">Yeni öğeler video olarak eklenecek.</p>
+          </section>
+          <p class="side-note">Aynı parça aynı biçimde yeniden eklenirse tekrar indirilmez.</p>
+          <p id="storageWarning" class="notice warning" role="alert" hidden>
+          </p>
+          <p id="actionError" class="notice error" role="alert" hidden>
+          </p>
+          <div id="playlistRecovery" class="notice warning" hidden>
+            <p>Listeye erişilemedi. İstersen yalnızca bağlantıdaki videoyu indirebilirsin.</p>
+            <button id="singleVideoButton" class="ghost">Yalnızca bu videoyu indir</button>
           </div>
-          <div class="format-bar">
-            <span class="meta-label">Indirme formati</span>
-            <div class="format-toggle">
-              <label>
-                <input type="radio" name="downloadFormat" value="video" checked />
-                <span>Video</span>
-              </label>
-              <label>
-                <input type="radio" name="downloadFormat" value="audio" />
-                <span>MP3</span>
-              </label>
+        </aside>
+        <section class="queue" aria-labelledby="queueTitle">
+          <div class="queue-heading">
+            <div>
+              <h2 id="queueTitle" tabindex="-1">İndirmeler</h2>
+              <p id="summaryText" class="muted">Kuyruk hazırlanıyor…</p>
+            </div>
+            <button id="stopButton" class="ghost" disabled>Tümünü durdur</button>
+          </div>
+          <div class="panel batch-summary">
+            <div class="summary-line">
+              <strong id="batchLabel">İndirmeye hazırsın</strong>
+              <span id="batchCount">
+              </span>
+            </div>
+            <progress id="batchProgress" max="1" value="0" aria-label="Başarıyla indirilen parçalar">
+            </progress>
+            <div id="statsGrid" class="stats-grid">
             </div>
           </div>
-          <textarea
-            id="urlInput"
-            placeholder="Her satira bir YouTube linki gelecek sekilde yapistirin" aria-label="Indirilecek linkler"
-          ></textarea>
-          <p id="storageWarning" class="error" role="alert" hidden></p>
-          <p class="hint">Bos satirlar ve tekrar eden linkler otomatik temizlenir.</p>
-          <div class="actions">
-            <button id="startButton" class="primary">Baslat</button>
-            <button id="stopButton" class="danger">Durdur</button>
-            <button id="retryButton" class="ghost">Retry Failed</button>
-            <button id="clearButton" class="ghost">Listeyi Temizle</button>
-            <button id="openFolderButton" class="ghost">Indirilen Klasoru Ac</button>
-          </div>
-        </section>
-
-        <section class="stats-grid" id="statsGrid"></section>
-
-        <section class="panel table-panel">
-          <div class="panel-head">
-            <h2>Job Listesi</h2>
-            <span id="summaryText" class="summary">-</span>
+          <div class="list-toolbar">
+            <div class="filters" role="group" aria-label="İndirme filtresi">
+              <button data-filter="all" aria-pressed="true">Tümü <span id="countAll">0</span>
+              </button>
+              <button data-filter="active" aria-pressed="false">Etkin <span id="countActive">0</span>
+              </button>
+              <button data-filter="completed" aria-pressed="false">Tamamlanan <span id="countCompleted">0</span>
+              </button>
+              <button data-filter="failed" aria-pressed="false">İndirilemeyen <span id="countFailed">0</span>
+              </button>
+            </div>
+            <label class="search">
+              <span class="sr-only">İndirmelerde başlık veya bağlantı ara</span>
+              <input id="searchInput" type="search" placeholder="Parça ara…">
+            </label>
           </div>
           <div class="table-wrap">
             <table>
+              <caption class="sr-only">İndirme kuyruğu ve geçmişi</caption>
+              <colgroup>
+                <col class="number-column">
+                <col class="title-column">
+                <col class="status-column">
+                <col class="action-column">
+              </colgroup>
               <thead>
                 <tr>
-                  <th>No</th>
-                  <th>Format</th>
-                  <th>Title</th>
-                  <th>URL</th>
-                  <th>Playlist</th>
-                  <th>Index</th>
-                  <th>Status</th>
-                  <th>Progress</th>
-                  <th>Speed</th>
-                  <th>ETA</th>
-                  <th>Error</th>
-                  <th>Action</th>
+                  <th scope="col">No</th>
+                  <th scope="col">Parça</th>
+                  <th scope="col">Durum ve ilerleme</th>
+                  <th scope="col">İşlemler</th>
                 </tr>
               </thead>
               <tbody id="jobsBody">
                 <tr>
-                  <td colspan="12" class="empty">Henuz job yok.</td>
+                  <td colspan="4" class="empty">İlk bağlantını ekleyerek başlayabilirsin.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="pagination">
-            <button id="previousPage" class="ghost">Onceki</button>
-            <span id="pageInfo"></span>
-            <button id="nextPage" class="ghost">Sonraki</button>
+          <div class="list-footer">
+            <span id="visibleCount" class="muted">
+            </span>
+            <div class="pagination">
+              <button id="previousPage" class="ghost" disabled>Önceki</button>
+              <span id="pageInfo">
+              </span>
+              <button id="nextPage" class="ghost" disabled>Sonraki</button>
+            </div>
+            <details id="queueMenu" class="queue-menu">
+              <summary>Liste işlemleri</summary>
+              <div>
+                <button id="retryButton" class="ghost">İndirilemeyenleri yeniden dene</button>
+                <button id="clearButton" class="danger">Listeyi temizle</button>
+              </div>
+            </details>
           </div>
-        </section>
-
-        <section class="panel log-panel">
-          <div class="panel-head">
-            <h2>Durum ve Log</h2>
-            <span id="lastMessage" role="status" aria-live="polite">Hazir</span>
-          </div>
-          <pre id="logBox">Uygulama yukleniyor...</pre>
         </section>
       </main>
+      <footer class="statusbar">
+        <span id="lastMessage" role="status" aria-live="polite">Hazır</span>
+        <details id="technicalDetails">
+          <summary>Teknik ayrıntılar</summary>
+          <div class="technical-panel">
+            <div class="binary-row">
+              <span id="ytDlpStatus">İndirme aracı kontrol ediliyor…</span>
+              <span id="ffmpegStatus">Dönüştürme aracı kontrol ediliyor…</span>
+            </div>
+            <pre id="logBox">Hazır</pre>
+          </div>
+        </details>
+      </footer>
     </div>
-
-    <script src="./renderer.js"></script>
+    <dialog id="jobDialog" aria-labelledby="jobDialogTitle">
+      <div class="dialog-heading">
+        <h2 id="jobDialogTitle">Parça ayrıntıları</h2>
+        <button data-close-dialog="jobDialog" class="ghost">Kapat</button>
+      </div>
+      <dl id="jobDetails">
+      </dl>
+    </dialog>
+    <dialog id="clearDialog" aria-labelledby="clearDialogTitle" aria-describedby="clearDialogText">
+      <h2 id="clearDialogTitle">Liste temizlensin mi?</h2>
+      <p id="clearDialogText">
+      </p>
+      <p class="muted">İndirilen dosyalar ve tekrar indirmeyi önleyen arşiv korunur.</p>
+      <div class="dialog-actions">
+        <button data-close-dialog="clearDialog" class="ghost" autofocus>Vazgeç</button>
+        <button id="confirmClearButton" class="danger">Listeyi temizle</button>
+      </div>
+    </dialog>
+    <dialog id="settingsDialog" aria-labelledby="settingsDialogTitle">
+      <div class="dialog-heading">
+        <h2 id="settingsDialogTitle">Ayarlar</h2>
+        <button data-close-dialog="settingsDialog" class="ghost">Kapat</button>
+      </div>
+      <p>Son seçtiğin MP3/video biçimi sonraki açılışta hatırlanır. Mevcut kuyruktaki parçaların biçimi değişmez.</p>
+      <dl>
+        <dt>İndirme klasörü</dt>
+        <dd id="settingsFolder">
+        </dd>
+        <dt>Eşzamanlı indirme</dt>
+        <dd id="settingsConcurrency">
+        </dd>
+        <dt>Parça başına deneme sınırı</dt>
+        <dd id="settingsRetries">
+        </dd>
+      </dl>
+      <button id="settingsPickFolderButton" class="ghost">İndirme klasörünü değiştir</button>
+    </dialog>
+    <script src="./renderer.js">
+    </script>
   </body>
 </html>
