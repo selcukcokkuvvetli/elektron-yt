@@ -15,7 +15,7 @@ Bu dosya, ayrıntılı proje incelemesinde bulunan sorunların giderilmesi ve ye
 | GitHub kullanımı | Kullanıcı kararıyla yalnızca kod ve sürüm geçmişi; Windows verification ve Installer candidate verification workflow dosyaları kaldırıldı. Yeni push/PR otomatik test, build veya yayın başlatmaz |
 | Yeni build / GitHub yayını | Önceki temiz commit build'i ve uzak Windows CI kanıtları tarihsel kayıt olarak korunur. Bundan sonraki test ve paketleme yerelde elle yapılır. Public sürüm yayını yapılmadı |
 | Arayüz yenileme | 23 Ekim: [Arayüz Yenileme Planı](ARAYUZ_YENILEME_PLANI.md) UI-1/2/3 uygulandı. UI-4 yerel otomatik ve paket kontrolleri geçti. Test edilen paket kaynağı `329e711`; 1.2.0 sürümü korundu |
-| 25 Ekim indirme düzeltmesi | 103 öğeli listedeki indirme sorunu Türkçe hedef klasörle yeniden üretildi. UTF-8 düzeltmesi uygulandı; gerçek MP3/MP4 regresyonu geçti. Toplu YouTube ve yeni paket doğrulamaları aşağıda takip edilir |
+| 25 Ekim indirme düzeltmesi | Türkçe hedef klasör sorunu düzeltildi. Yeni paketin motoruyla 103 öğe denendi: 101 MP3 indirildi ve decode edildi; YouTube'un erişilemez bildirdiği 2 video ayrı doğrulandı. Kaynak/paket/dry-run kontrolleri geçti; ayrıntılar aşağıda |
 | Sıradaki adım | Fiziksel Windows DPI/ekran okuyucu incelemesi ve ayrı Windows ortamındaki tam installer/güncelleme kabulü. Actions kapalı kalır |
 
 **Sürüm kararı:** İndirme motoru, analiz yaşam döngüsü, depolama, bağımlılıklar ve dağıtım akışındaki değişiklikleri tek bir `1.2.0` sürümünde toplamak hedefleniyor. Mevcut kullanıcı verileriyle uyumluluk korunacak. Sürüm numarası yerel düzeltme testlerinden sonra `1.2.0` olarak artırıldı; `package.json` ve `package-lock.json` birlikte güncellendi. Hedef sürüm değişirse gerekçesi karar günlüğüne yazılacak.
@@ -25,13 +25,32 @@ Bu dosya, ayrıntılı proje incelemesinde bulunan sorunların giderilmesi ve ye
 ### 25 Ekim 2026 — Türkçe klasörde 103 parçalık liste indirme sorunu
 
 - [x] Kullanıcının bildirdiği `PL4v2s0yG9hQge02CoOTVQRa5mI3qmfm0J` listesinin ilk parçası (`SvoumS2pEwc`) ayrı test alanında denendi. `Türk Marşları` klasöründe 10.077.572 bayt MP3 oluştuğu halde runner `Indirme tamamlandi ancak cikti dosyasi dogrulanamadi.` hatası verdi.
-- [x] Neden doğrulandı: Windows yerel karakter kodlamasıyla yazılan `FILEPATH` çıktısı UTF-8 olarak okununca `Türk Marşları` bozuluyor. Dosya gerçekten mevcut; hata dosya yolunun doğrulanmasında oluşuyor. Eski iş listesi kullanıcı tarafından temizlenmiş olduğundan önceki tek tek hata kayıtları mevcut değil; aynı belirti gerçek indirmeyle yeniden üretildi.
+- [x] Neden doğrulandı: Windows yerel karakter kodlamasıyla yazılan `FILEPATH` çıktısı UTF-8 olarak okununca `Türk Marşları` bozuluyor. Dosya gerçekten mevcut; hata dosya yolunun doğrulanmasında oluşuyor. İncelenen eski iş listesi boş olduğundan önceki tek tek hata kayıtları mevcut değil; aynı belirti gerçek indirmeyle yeniden üretildi.
 - [x] Analiz ve indirme komutlarına `--encoding utf-8` eklendi. Dosya yolu güvenlik/doğrulama kontrolleri korundu. Seçilen klasörün adını değiştirmek gerekmiyor.
 - [x] Gerçek yt-dlp/ffmpeg regresyonuna `Türk Marşları – İstanbul` hedef klasörü ve `İğdır Şarkı Çığ Özgür` metadata başlığı eklendi. Test düzeltmeden önce dosya doğrulamasında başarısız oldu; düzeltmeden sonra MP4/MP3, yüzde ve MP3 decode kontrolleri geçti.
-- [ ] Tam kaynak testleri, yeni portable/installer paketleri ve paket regresyonu tamamlanacak.
-- [ ] Aynı playlist yeni paket motoruyla Türkçe klasöre toplu indirilecek; erişilemeyen öğeler varsa ayrı kaydedilecek. Sonuçlar buraya işlenecek.
+- [x] `npm test`, yeni portable/installer paketlerinin oluşturulması, `test:packages` ve `release:check` dry-run geçti. Test edilen paket kaynağı `7efef74697071d61ce70003b03796341c2524864`; build kaydında `dirty: false`. Public yayın yapılmadı. Önceden oluşmuş MP3, ayrı test alanında tekrar denenince içeriği değişmeden doğru dosya yoluyla başarılı sonuçlandı.
+- [x] Aynı playlist yeni paket motoruyla Türkçe klasöre toplu indirildi: 103 ayrı öğe çözüldü ve denendi; 101 başarılı MP3, 2 YouTube erişim hatası, 0 iptal/atlama. 101 dosyanın tamamı ffmpeg ile hatasız decode edildi; toplam 645.936.431 bayt (yaklaşık 616,01 MiB). 103/103 indirme başarılı kabul edilmez; erişilebilen 101 öğe doğrulandı.
+- [x] Hem geliştirme hem kurulu uygulama veri alanındaki `jobs.json`, `settings.json`, `archive.txt` SHA-256 değerleri test öncesi/sonrası aynı. Kullanıcının mevcut müziklerine yazılmadı.
 
 Bu çalışma mevcut kullanıcı klasörüne veya kurulu uygulamanın verilerine yazmaz. Public GitHub yayını ve Actions açılması kapsam dışıdır. Sürüm, henüz public yayımlanmamış `1.2.0` yerel adayı olarak korunur.
+
+Teknik seçenek için birincil kaynak: [yt-dlp karakter kodlaması seçeneği](https://github.com/yt-dlp/yt-dlp/blob/master/README.md#workarounds). Yerel kanıtlar: `verification/utf8-source-tests.log`, `verification/utf8-build.log`, `verification/utf8-package-tests.log`, `verification/utf8-release-check.log`, `verification/utf8-existing-file.json`.
+
+Toplu sonuç: `verification/playlist-103.json`, `verification/playlist-103-console.log` ve `verification/utf8-delivery.json`. MP3 dosyaları: `downloads/playlist-103-mp3-MnVLw4/Türk Marşları – İstanbul/audio/`. Bunlar yerel test çıktılarıdır; GitHub'a eklenmez.
+
+| Liste sırası | Erişilemeyen video | YouTube yanıtı |
+| --- | --- | --- |
+| 59 | [10GjjRdaZjk](https://www.youtube.com/watch?v=10GjjRdaZjk) | Videoya bağlı YouTube hesabı kapatılmış. |
+| 95 | [Hadi Bakalım Hayda — J_nPq2AfdXk](https://www.youtube.com/watch?v=J_nPq2AfdXk) | `Video unavailable. This video is not available`. Daha ayrıntılı neden bildirilmedi. |
+
+Bu iki video ayrı metadata kontrolünde yeniden denendi ve aynı erişim hataları alındı: `verification/playlist-103-unavailable.json`. Kalan indirmeler bu hatalardan etkilenmedi.
+
+| Güncel yerel paket | Boyut | SHA-256 |
+| --- | --- | --- |
+| `release/1.2.0/Elektron-YT-Portable-1.2.0.exe` | 145.261.145 bayt | `5b8831d61cf7334ac37c13a5c15b5b12eaf04218f44fd11642afdb3bd9a77f66` |
+| `release/1.2.0/Elektron-YT-Setup-1.2.0.exe` | 145.484.134 bayt | `31246d850f4f8b3f0ea0b7e63cd5fc79bbb9de191a0a6ac2be19397be7822f31` |
+
+Paketler düzeltmeyi içeren `7efef74` kaynak commit'inden üretildi; bu sonuç kaydının sonraki dokümantasyon commit'i paket kaynağı değildir. İki paket de `NotSigned`. Kullanıcının kurulu uygulamasına otomatik kurulum yapılmadı; düzeltmenin kurulu uygulamaya geçmesi için yeni yerel Setup dosyası kullanılmalı. Ayrı Windows ortamındaki gerçek installer/güncelleme kabulü açık kalır.
 
 ## 2. Kapsam ve korunacak davranışlar
 

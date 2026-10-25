@@ -204,3 +204,7 @@ YouTube'dan kaldırılmış videonun hatası diğer indirmeleri durdurmamalı. �
 Toplu rapor `verification/ui-delivery.json` ve güncel `verification/final.json` içindedir. Gerçek ekran örnekleri `verification/ui-current-*.png` dosyalarına kaydedildi. Bunlar yerel çıktıdır; GitHub yalnızca kod ve sürüm geçmişi için kullanılır.
 
 Fiziksel DPI/ekran okuyucu kontrolü ile önceki ayrı Windows installer/veri geçişi/güncelleme kabulü açık kalır. Yeni arayüzün kaynak ve yerel paket uygulaması tamamlandı.
+
+### 25 Ekim 2026 — Gerçek kullanım sonrası indirme düzeltmesi
+
+Türkçe hedef klasör adının yt-dlp çıktısında bozulması nedeniyle mevcut MP3 dosyası başarısız sayılıyordu. UTF-8 düzeltmesiyle yeni paket hazırlandı. Kullanıcının 103 öğeli listesinde 101 MP3 indirildi ve tamamı ffmpeg ile doğrulandı; 2 öğe YouTube erişim hatası verdi ve ayrıca kontrol edildi. Kaynak/paket testleri geçti; mevcut kullanıcı verileri korundu. Paket kaynağı `7efef74`. Ayrıntılar, dosya yolları ve paket hash'leri [ana takip planındaki 25 Ekim kaydında](IYILESTIRME_PLANI.md) tutulur.
