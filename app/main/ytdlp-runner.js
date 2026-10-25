@@ -38,6 +38,7 @@ class YtDlpRunner {
   buildResolveArgs(inputUrl) {
     validateUrl(inputUrl);
     return ['--dump-single-json', '--flat-playlist', '--yes-playlist', '--ignore-config', '--no-warnings',
+      '--encoding', 'utf-8',
       '--cache-dir', path.join(this.appPaths.dataDir || this.appPaths.baseDir, 'yt-dlp-cache'),
       '--no-js-runtimes', '--js-runtimes', 'node:' + (this.appPaths.jsRuntimePath || process.execPath),
       '--ignore-errors', '--', inputUrl];
@@ -117,7 +118,10 @@ class YtDlpRunner {
 
   buildArgs(job, downloadFolder) {
     validateUrl(job.url);
+    // stdout/stderr are UTF-8 pipes; Windows' locale encoding corrupts printed
+    // output paths containing Turkish characters and makes valid files fail verification.
     const args = ['--newline', '--progress', '--ignore-config', '--no-warnings', '--no-playlist',
+      '--encoding', 'utf-8',
       '--cache-dir', path.join(this.appPaths.dataDir || this.appPaths.baseDir, 'yt-dlp-cache'),
       '--no-js-runtimes', '--js-runtimes', 'node:' + (this.appPaths.jsRuntimePath || process.execPath),
       '--restrict-filenames', '--windows-filenames', '--ffmpeg-location', this.appPaths.binDir,

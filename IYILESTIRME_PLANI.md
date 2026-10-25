@@ -15,11 +15,23 @@ Bu dosya, ayrıntılı proje incelemesinde bulunan sorunların giderilmesi ve ye
 | GitHub kullanımı | Kullanıcı kararıyla yalnızca kod ve sürüm geçmişi; Windows verification ve Installer candidate verification workflow dosyaları kaldırıldı. Yeni push/PR otomatik test, build veya yayın başlatmaz |
 | Yeni build / GitHub yayını | Önceki temiz commit build'i ve uzak Windows CI kanıtları tarihsel kayıt olarak korunur. Bundan sonraki test ve paketleme yerelde elle yapılır. Public sürüm yayını yapılmadı |
 | Arayüz yenileme | 23 Ekim: [Arayüz Yenileme Planı](ARAYUZ_YENILEME_PLANI.md) UI-1/2/3 uygulandı. UI-4 yerel otomatik ve paket kontrolleri geçti. Test edilen paket kaynağı `329e711`; 1.2.0 sürümü korundu |
+| 25 Ekim indirme düzeltmesi | 103 öğeli listedeki indirme sorunu Türkçe hedef klasörle yeniden üretildi. UTF-8 düzeltmesi uygulandı; gerçek MP3/MP4 regresyonu geçti. Toplu YouTube ve yeni paket doğrulamaları aşağıda takip edilir |
 | Sıradaki adım | Fiziksel Windows DPI/ekran okuyucu incelemesi ve ayrı Windows ortamındaki tam installer/güncelleme kabulü. Actions kapalı kalır |
 
 **Sürüm kararı:** İndirme motoru, analiz yaşam döngüsü, depolama, bağımlılıklar ve dağıtım akışındaki değişiklikleri tek bir `1.2.0` sürümünde toplamak hedefleniyor. Mevcut kullanıcı verileriyle uyumluluk korunacak. Sürüm numarası yerel düzeltme testlerinden sonra `1.2.0` olarak artırıldı; `package.json` ve `package-lock.json` birlikte güncellendi. Hedef sürüm değişirse gerekçesi karar günlüğüne yazılacak.
 
 **Takip kuralı:** Bir iş yalnızca uygulanıp ilgili kabul ölçütleri doğrulandığında `[x]` yapılır. İnceleme bulgusu, düzeltmenin tamamlandığı anlamına gelmez. Çalıştırılmayan testler açıkça “Çalıştırılmadı” olarak kalır.
+
+### 25 Ekim 2026 — Türkçe klasörde 103 parçalık liste indirme sorunu
+
+- [x] Kullanıcının bildirdiği `PL4v2s0yG9hQge02CoOTVQRa5mI3qmfm0J` listesinin ilk parçası (`SvoumS2pEwc`) ayrı test alanında denendi. `Türk Marşları` klasöründe 10.077.572 bayt MP3 oluştuğu halde runner `Indirme tamamlandi ancak cikti dosyasi dogrulanamadi.` hatası verdi.
+- [x] Neden doğrulandı: Windows yerel karakter kodlamasıyla yazılan `FILEPATH` çıktısı UTF-8 olarak okununca `Türk Marşları` bozuluyor. Dosya gerçekten mevcut; hata dosya yolunun doğrulanmasında oluşuyor. Eski iş listesi kullanıcı tarafından temizlenmiş olduğundan önceki tek tek hata kayıtları mevcut değil; aynı belirti gerçek indirmeyle yeniden üretildi.
+- [x] Analiz ve indirme komutlarına `--encoding utf-8` eklendi. Dosya yolu güvenlik/doğrulama kontrolleri korundu. Seçilen klasörün adını değiştirmek gerekmiyor.
+- [x] Gerçek yt-dlp/ffmpeg regresyonuna `Türk Marşları – İstanbul` hedef klasörü ve `İğdır Şarkı Çığ Özgür` metadata başlığı eklendi. Test düzeltmeden önce dosya doğrulamasında başarısız oldu; düzeltmeden sonra MP4/MP3, yüzde ve MP3 decode kontrolleri geçti.
+- [ ] Tam kaynak testleri, yeni portable/installer paketleri ve paket regresyonu tamamlanacak.
+- [ ] Aynı playlist yeni paket motoruyla Türkçe klasöre toplu indirilecek; erişilemeyen öğeler varsa ayrı kaydedilecek. Sonuçlar buraya işlenecek.
+
+Bu çalışma mevcut kullanıcı klasörüne veya kurulu uygulamanın verilerine yazmaz. Public GitHub yayını ve Actions açılması kapsam dışıdır. Sürüm, henüz public yayımlanmamış `1.2.0` yerel adayı olarak korunur.
 
 ## 2. Kapsam ve korunacak davranışlar
 

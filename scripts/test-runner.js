@@ -36,13 +36,16 @@ async function main() {
   let slowBytes = 0;
   let stalledBytes = 0;
   let pendingRequested = false;
+  const unicodeTitle = 'İğdır Şarkı Çığ Özgür';
+  const unicodeUrl = '/' + encodeURIComponent(unicodeTitle) + '.mp4';
   const sockets = new Set();
   const server = http.createServer((req, res) => {
     if (req.url === '/pending') { pendingRequested = true; return; }
-    const data = req.url === '/sample.mp4' ? fs.readFileSync(sample) : Buffer.alloc(512 * 1024, 42);
+    const isSample = req.url === '/sample.mp4' || req.url === unicodeUrl;
+    const data = isSample ? fs.readFileSync(sample) : Buffer.alloc(512 * 1024, 42);
     res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': data.length });
     if (req.method === 'HEAD') { res.end(); return; }
-    if (req.url === '/sample.mp4') { res.end(data); return; }
+    if (isSample) { res.end(data); return; }
     if (req.url === '/stalled.mp4') { res.write(data.subarray(0, 32768)); stalledBytes += 32768; return; }
     let offset = 0;
     const timer = setInterval(() => {
@@ -67,21 +70,26 @@ async function main() {
     assert.ok(resolved.items[0].title);
     console.log('PASS T05 real asynchronous metadata');
 
+    const unicodeMetadata = await runner.resolveInput(base + unicodeUrl);
+    assert.strictEqual(unicodeMetadata.items[0].title, unicodeTitle);
+    console.log('PASS UTF-8 metadata preserves Turkish titles');
+
     for (const format of ['video', 'audio']) {
       const updates = [];
       liveTask = runner.start({ url: base + '/sample.mp4', format }, {
-        downloadFolder: path.join(workspace.root, format), onUpdate: patch => updates.push(patch)
+        downloadFolder: path.join(workspace.root, 'Türk Marşları – İstanbul', format), onUpdate: patch => updates.push(patch)
       });
       const result = await liveTask.promise;
       liveTask = null;
       assert.ok(fs.existsSync(result.outputPath));
       assert.strictEqual(path.extname(result.outputPath), format === 'audio' ? '.mp3' : '.mp4');
+      assert.ok(result.outputPath.includes('Türk Marşları – İstanbul'));
       assert.ok(updates.some(patch => patch.stage === 'download' && patch.progress > 0));
       assert.ok(updates.filter(patch => patch.stage === 'postprocess').every(patch => patch.progress === undefined));
       if (format === 'audio') {
         await runBinary(path.join(paths.binDir, 'ffmpeg.exe'), ['-v', 'error', '-i', result.outputPath, '-f', 'null', '-']);
       }
-      console.log('PASS ' + (format === 'video' ? 'T01' : 'T02') + ' real ' + format + ' output/progress');
+      console.log('PASS ' + (format === 'video' ? 'T01' : 'T02') + ' real ' + format + ' output/progress in a Turkish folder');
     }
 
     const updates = [];

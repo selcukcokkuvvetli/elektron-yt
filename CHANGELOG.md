@@ -2,6 +2,7 @@
 
 ## 1.2.0 — Yerel doğrulama ve paket hazırlığı
 
+- Türkçe karakter içeren hedef klasörlerde oluşan MP3/MP4 dosyalarının yanlışlıkla başarısız sayılması düzeltildi; yt-dlp çıktısı UTF-8 olarak okunuyor.
 - Koyu ve kompakt masaüstü arayüzü: sade indirme listesi, filtre/arama, Türkçe durumlar, parça ayrıntıları ve temizleme onayı eklendi.
 - İlk kullanım biçimi MP3 olarak ayarlandı; son MP3/video tercihi doğrulanarak saklanıyor ve mevcut işlerin biçimi korunuyor.
 - Playlist beklenirken tek video sonucuna sessiz geçiş engellendi; kullanıcı bağlantıdaki yalnız videoyu açıkça seçebiliyor.
